@@ -14,95 +14,111 @@ $SrcContext,
 $DestContext  
 
 )
-#$targetLocation = "chinaeast"
-#Add-AzureRmAccount -EnvironmentName AzureChinaClouds
-#$vm = Get-azurermvm -ResourceGroupName CATDEMORG -name catmawebSrv0
 
-#$destContext = Get-AzureRmContext
 
-####Write Progress####
-
-Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Preparing Migration" -percentComplete 5
-Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Started" -percentComplete 0
-
-####Collecting VM Information####
-
-Set-AzureRmContext -Context $SrcContext | Out-Null
-
-Function Add-ResourceGroupList
+Class ResourceProfile
 {
-   Param(
-   [Parameter(Mandatory=$True)]
-   [String] $rgName   
-   )
-
-   $rgCheck = $resourceGroups | Where-Object { $_.ResourceGroupName -eq $rgName }
-
-   if ( $rgCheck -eq $null )
-   {
-      $targetRg = Get-AzureRmResourceGroup -Name $rgName
-      $targetRg.Location = $script:targetLocation
-
-      $Script:resourceGroups += $targetRg
-   }
-
+   [String] $ResourceType
+   [String] $SourceResourceGroup
+   [String] $DestinationResourceGroup
+   [String] $SourceName
+   [String] $DestinationName
 }
 
+Function Add-ResourceList
+{
+   Param(
+    [Parameter(Mandatory=$True)]
+    [String] $resourceId
+   )
+    
+   $resource = New-Object ResourceProfile
+   $resource.SourceName = $resourceId.Split("/")[8]
+   $resource.ResourceType = $resourceId.Split("/")[7]
+   $resource.SourceResourceGroup = $resourceId.Split("/")[4]
+   
+   $resourceCheck = $vmResources | Where-Object { $_ -eq $resource }
+   
+   if ( $resourceCheck -eq $null )
+   {
+     $Script:vmResources += $resource
+   }
+}
 
-#Get Dependencies
-Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Getting Dependencies" -percentComplete 15
+Function Add-StorageList
+{
+   Param(
+    [Parameter(Mandatory=$True)]
+    [String] $storName   
+   )
 
-##Handle Resource Group Dependencies: List Distinct Resource Group
+   $storCheck = $vmResources | Where-Object { ($_.Name -eq $storName) -and ($_.ResourceType -eq "storageAccounts" ) }
+
+   if ( $storCheck -eq $null )
+   {
+      $targetStor = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storName }
+      
+      $resource = New-Object ResourceProfile
+      $resource.SourceName = $targetStor.StorageAccountName
+      $resource.ResourceType = "storageAccounts"
+      $resource.SourceResourceGroup = $targetStor.ResourceGroupName
+
+      $Script:vmResources += $resource
+   }
+}
+
+####Get VM Components####
+Set-AzureRmContext -Context $SrcContext | Out-Null
+
 #VM
-$resourceGroups = @()
+$vmResources = @()
 
-Add-ResourceGroupList -rgName $vm.ResourceGroupName
+Add-ResourceList -resourceId $vm.Id
 
 #AS
 if ($vm.AvailabilitySetReference -ne $null)
 {
-    
-    Add-ResourceGroupList -rgName $vm.AvailabilitySetReference.Id.Split("/")[4]
-    
+    Add-ResourceList -resourceId $vm.AvailabilitySetReference.Id
 }
    
 
 #NIC
 if ($vm.NetworkInterfaceIDs -ne $null)
-{
+{ 
    foreach ( $nicId in $vm.NetworkInterfaceIDs )
    {
-      Add-ResourceGroupList -rgName $nicId.Split("/")[4]
+      Add-ResourceList -resourceId $nicId
             
       $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId }
-
+     
       foreach ( $ipConfig in $nic.IpConfigurations )
       {
          #LB
          foreach( $lbp in $ipConfig.LoadBalancerBackendAddressPools)
          {   
-            Add-ResourceGroupList -rgName $lbp.Id.Split("/")[4]
+            Add-ResourceList -resourceId $lbp.Id
             
             #PIP-LB
             $lb = Get-AzureRmLoadBalancer -Name $lbp.Id.Split("/")[8] -ResourceGroupName $lbp.Id.Split("/")[4]
+                                  
             foreach ( $fip in $lb.FrontendIpConfigurations )
             {
-               Add-ResourceGroupList -rgName $fip.PublicIpAddress.Id.Split("/")[4]
+               Add-ResourceList -resourceId $fip.PublicIpAddress.Id
             }  
          }
 
          #VN
-         Add-ResourceGroupList -rgName $ipConfig.Subnet.Id.Split("/")[4]
-            
+         
+         Add-ResourceList -resourceId $ipConfig.Subnet.Id
 
          #NSG-VN
          $vn = Get-AzureRmVirtualNetwork -Name $ipConfig.Subnet.Id.Split("/")[8] -ResourceGroupName $ipConfig.Subnet.Id.Split("/")[4]
-
+            
          foreach ( $subnet in $vn.Subnets)
          {
             if ( $subnet.NetworkSecurityGroup -ne $null)
             {
-               Add-ResourceGroupList -rgName $subnet.NetworkSecurityGroup.Id.Split("/")[4]
+              Add-ResourceList -resourceId $subnet.NetworkSecurityGroup.Id                
             }
          }
          
@@ -110,49 +126,25 @@ if ($vm.NetworkInterfaceIDs -ne $null)
          #PIP-nic
          if ($ipConfig.PublicIpAddress -ne $null)
          {
-            Add-ResourceGroupList -rgName $ipConfig.PublicIpAddress.Id.Split("/")[4]
+           Add-ResourceList -resourceId $ipConfig.PublicIpAddress.Id
          }
       }
-
-      
+     
       #NSG-nic
       if ($nic.NetworkSecurityGroup -ne $null)
       {
-         Add-ResourceGroupList -rgName $nic.NetworkSecurityGroup.Id.Split("/")[4]
+         Add-ResourceList -resourceId $nic.NetworkSecurityGroup.Id
       }
 
    }
 }
-
-
-#Get the Storage Accountes related to this VM
-$storageAccounts = @()
-
-Function Add-StorageList
-{
-   Param(
-   [Parameter(Mandatory=$True)]
-   [String] $storName   
-   )
-
-   $storCheck = $storageAccounts | Where-Object { $_.StorageAccountName -eq $storName }
-
-   if ( $storCheck -eq $null )
-   {
-      $targetStor = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storName }
-      $targetStor.Location = $targetLocation
-
-      $Script:storageAccounts += $targetStor
-   }
-}
-
 
 #OSDisk
 $osuri = $vm.StorageProfile.OsDisk.Vhd.Uri
 if ( $osuri -match "https" ) {
 $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)}
 else {
-$osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
+  $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
 }
 Add-StorageList -storName $osstorname
 
@@ -164,11 +156,10 @@ foreach($dataDisk in $vm.StorageProfile.DataDisks)
    if ( $osuri -match "https" ) {
    $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
    else {
-   $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
+    $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
    }
    Add-StorageList -storName $datastorname
-}
-
+} 
 
 
 #####################################
@@ -234,6 +225,8 @@ else {
 }
 
 
+
+#################################
 Set-AzureRmContext -Context $DestContext | Out-Null
  
 # Core Quota Check
@@ -251,70 +244,159 @@ $vmAvailableTotalCore = $vmTotalCoreUsage.Limit - $vmTotalCoreUsage.CurrentValue
 $vmAvailableFamilyCoreUsage = $vmFamilyCoreUsage.Limit - $vmFamilyCoreUsage.CurrentValue
 
 if($vmCoreNumber -gt $vmAvailableTotalCore) {
-    Add-ResultList -result "The vm core quota validate failed, because Total Regional Cores over quota"
+    $resultOutput = "The vm core quota validate failed, because Total Regional Cores over quota"
+    Add-ResultList -result $resultOutput
 }
 else{
-    Add-ResultList -result "The vm core quota validate successful"
+    $resultOutput = "The vm core quota validate successful(Total Regional Cores)"
+    Add-ResultList -result $resultOutput
 }
 if($vmCoreNumber -gt $vmAvailableFamilyCoreUsage) {
-    Add-ResultList -result "The vm core quota validate failed, because " + $vmCoreFamily + " over quota"
+    $resultOutput = "The vm core quota validate failed, because " + $vmCoreFamily + " over quota"
+    Add-ResultList -result $resultOutput
 }
 else{
-    Add-ResultList -result "The vm core quota validate successful"
+    $resultOutput = "The vm core quota validate successful(" + $vmCoreFamily + ")"
+    Add-ResultList -result $resultOutput
 }
 
 # Storage Quota Check
-
+$storageAccountsCount = 0
+foreach ($resource in $vmResources) {
+    if($resource.ResourceType -eq "storageAccounts"){
+        $storageAccountsCount += 1
+    }
+}
 $storageUsage = Get-AzureRmStorageUsage
 $storageAvailable = $storageUsage.Limit - $storageUsage.CurrentValue
 
-if($storageAccounts.Count -gt $storageAvailable)
+if($storageAccountsCount -gt $storageAvailable)
 {
-    Add-ResultList -result "The storage account validate failed, because over storage account quota"
+    $resultOutput = "The storage account quota validate failed, because over enough storage account available"
+    Add-ResultList -result $resultOutput
 }
 else
 {
-    Add-ResultList -result "The storage account validate successful"
+    $resultOutput = "The storage account quota validate successful"
+    Add-ResultList -result $resultOutput
 }
 
-# RG Name Existence
 
-Foreach ($rg in $resourceGroups)
+
+# Storage Name Existence
+
+$storageAccountNames = @()
+foreach ( $resource in $vmResources)
 {
-    $rgCheck = Get-AzureRmResourceGroup -Name $rg.ResourceGroupName -ErrorAction Ignore
+   if($resource.ResourceType -eq "storageAccounts")
+   {
+       $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.SourceName }
+   }
+
+    if ( $saCheck -eq $null )
+    {
+        $Script:storageAccountNames += $resource.SourceName
+    }
+}
+
+Foreach ($storage in $storageAccountNames)
+{
+  $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage}
+
+  if ( $storageCheck -eq $null )
+  {
+     $storageAvailability = Get-AzureRmStorageAccountNameAvailability -Name $storage
+     if ($storageAvailability.NameAvailable -eq $false)
+     {
+        $resultOutput = "The storage account " + $storage + " validate failed, because " + $storageAvailability.Reason
+        Add-ResultList -result $resultOutput
+     }
+     else
+     {
+        $resultOutput = "The storage account " + $storage + " validate successful."
+        Add-ResultList -result $resultOutput
+     }
+  }
+}
+
+# DNS Name Check
+
+foreach ( $resource in $vmResources)
+{
+   if($resource.ResourceType -eq "publicIPAddresses"){
+        Set-AzureRmContext -Context $SrcContext | Out-Null
+        $sourcePublicAddress = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
+        Set-AzureRmContext -Context $DestContext | Out-Null
+        $dnsTestResult = Test-AzureRmDnsAvailability -DomainNameLabel $sourcePublicAddress.DnsSettings.DomainNameLabel -Location $targetLocation
+        if($dnsTestResult -eq "True")
+        {
+            $resultOutput = "The dns name " + $sourcePublicAddress.DnsSettings.DomainNameLabel + " validate successful."
+            Add-ResultList -result $resultOutput
+        }
+        else
+        {
+            $resultOutput = "The dns name " + $sourcePublicAddress.DnsSettings.DomainNameLabel + " validate failed, because DNS name not available in target location."
+            Add-ResultList -result $resultOutput
+        }
+   }
+}
+
+# Resource Existence
+Set-AzureRmContext -Context $DestContext | Out-Null
+# RG Name Existence
+$resourceGroupNames = @()
+foreach ( $resource in $vmResources)
+{
+   $rgCheck = $resourceGroupNames | Where-Object { $_ -eq $resource.SourceResourceGroup }
+
+   if ( $rgCheck -eq $null )
+   {
+      $Script:resourceGroupNames += $resource.SourceResourceGroup
+   }
+}
+Foreach ($rg in $resourceGroupNames)
+{
+    $rgCheck = Get-AzureRmResourceGroup -Name $rg -ErrorAction Ignore
 
 
     if ($rgCheck -eq $null)
     {
-        Add-ResultList -result "The resource group " + $rg.ResourceGroupName + " validate successful"
+        $resultOutput = "The resource group " + $rg + " validate successful"
+        Add-ResultList -result $resultOutput
     }
     else
     {
-        Add-ResultList -result "The resource group " + $rg.ResourceGroupName + " validate failed, because resource group name exist"
+        $resultOutput = "The resource group " + $rg + " validate failed, because resource group name exist"
+        Add-ResultList -result $resultOutput
     }
 
 }
 
-# Storage Name Existence
+#Other Resource Existence
 
-
-Foreach ($storage in $storageAccounts)
+foreach ( $resource in $vmResources)
 {
-  $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage.StorageAccountName}
-
-  if ( $storageCheck -eq $null )
-  {
-     $storageAvailability = Get-AzureRmStorageAccountNameAvailability -Name $storage.StorageAccountName
-     if ($storageAvailability.NameAvailable -eq $false)
-     {
-        Add-ResultList -result "The storage account " + $storage.StorageAccountName + " validate failed, because " + $storageAvailability.Reason
-     }
-  }
-
+    switch ($resource.ResourceType) 
+    { 
+        "virtualMachines" {$resourceCheck = Get-AzureRmVM -ResourceGroupName $resource.SourceResourceGroup -Name $resource.SourceName;break;} 
+        "availabilitySets" {$resourceCheck = Get-AzureRmAvailabilitySet -ResourceGroupName $resource.SourceResourceGroup -Name $resource.SourceName;break;}
+        "networkInterfaces" {$resourceCheck = Get-AzureRmNetworkInterface -ResourceGroupName $resource.SourceResourceGroup -Name $resource.SourceName;break;} 
+        "loadBalancers" {$resourceCheck = Get-AzureRmLoadBalancer -ResourceGroupName $resource.SourceResourceGroup -Name $resource.SourceName;break;} 
+        "publicIPAddresses" {$resourceCheck = Get-AzureRmPublicIpAddress -ResourceGroupName $resource.SourceResourceGroup -Name $resource.SourceName;break;} 
+        "virtualNetworks" {$resourceCheck = Get-AzureRmVirtualNetwork -ResourceGroupName $resource.SourceResourceGroup -Name $resource.SourceName;break;} 
+        "networkSecurityGroups" {$resourceCheck = Get-AzureRmNetworkSecurityGroup -ResourceGroupName $resource.SourceResourceGroup -Name $resource.SourceName;break;} 
+        "storageAccounts" {$resourceCheck = "won't check storage account, already checked";break;}
+    }
+    if ($resourceCheck -eq $null)
+    {
+        $resultOutput = "The resource type "+$resource.ResourceType+", name " + $resource.SourceName + " validate successful"
+        Add-ResultList -result $resultOutput
+    }
+    else
+    {
+        $resultOutput = "The resource type "+$resource.ResourceType+", name " + $resource.SourceName + " validate failed, because resource name exist"
+        Add-ResultList -result $resultOutput
+    }
 }
 
 $resultList
-
-
-
-# Resource Existence
