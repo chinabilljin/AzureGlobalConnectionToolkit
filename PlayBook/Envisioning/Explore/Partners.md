@@ -13,4 +13,4 @@ For details on the cloud service business model, please refer to the following w
 https://wacnppe.blob.core.chinacloudapi.cn/marketing-resource/documents/Windows_Azure_and_Office_365_cloud_services_business_model_operated_by_21Vianet12.pdf
 
 
-Let's move to the next stage - [Planning Stage](https://github.com/Azure/AzureGlobalConnectionCenter/tree/master/PlayBook/Planning/Explore).
+Let's move to the next stage - [Planning Stage](https://github.com/Azure/AzureGlobalConnectionCenter/blob/master/PlayBook/Planning/Explore/Explore.md).
