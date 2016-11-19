@@ -1,4 +1,4 @@
-##Explore##
+#Explore#
 
 Explore what you need to know during the **Envisioning Stage**
 
