@@ -14,7 +14,7 @@ Getting an ICP license is an additional step that is taken after you purchase yo
 
 ![Home](https://mncplaybook.azurewebsites.net/Content/Images/envisioning_guidance_policies.png)
 
-#Data Auditing#
+##Data Auditing##
 
 Based on your ICP registered domain and hosting location, MIIT and related governmental authorities should within their respective areas of responsibility, and according to the law, implement supervision and management of your Internet content. They reserve the right to audit your web site by examining your servers and data, at your actual hosting location and at any time if needed.
 
