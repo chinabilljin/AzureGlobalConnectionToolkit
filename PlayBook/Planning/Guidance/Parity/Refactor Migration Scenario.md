@@ -9,4 +9,4 @@ We recommend using Azure Site Recovery (ASR) for migrating VMs from other cloud 
 Please refer to https://azure.microsoft.com/en-us/services/site-recovery/
 for detailed information on ASR and https://azure.microsoft.com/en-us/documentation/articles/site-recovery-migrate-aws-to-azure/ for migrating Windows VMs from Amazon Web Services (AWS) to Azure.
 
-Let's move to the next section - [Rehost Migration Scenarios](https://github.com/Azure/AzureGlobalConnectionCenter/edit/master/PlayBook/Planning/Guidance/Parity/Rehost%20Migration%20Scenario.md).
+Let's move to the next section - [Rehost Migration Scenarios](https://github.com/Azure/AzureGlobalConnectionCenter/edit/master/PlayBook/Planning/Guidance/Parity/Rehost%20Migration%20Scenarios.md).
