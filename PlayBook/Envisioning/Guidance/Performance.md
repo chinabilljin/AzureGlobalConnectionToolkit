@@ -33,3 +33,4 @@ _**Dedicated Server Within China**_
 The ideal situation for most companies is to host their site using a provider based in mainland China, essentially placing you inside of the "Great Firewall of China". China Azure, operated by 21Vianet, will work with you to find the best hosting solution for your situation.
 
 
+Let's move to the next section - [Partners](https://github.com/Azure/AzureGlobalConnectionCenter/edit/master/PlayBook/Envisioning/Guidance/Partners.md).
