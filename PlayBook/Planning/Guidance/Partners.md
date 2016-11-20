@@ -63,5 +63,5 @@ There are many customer case studies regarding China Azure which you can use as 
  
 Please visit https://www.azure.cn/partnerancasestudy/case-studies/ for more details.
 
-Let's move to the next stage -  Onboarding Stage .
+Let's move to the next stage -  [Onboarding Stage](https://github.com/Azure/AzureGlobalConnectionCenter/blob/master/PlayBook/Onboarding/Guidance/Guidance.md) .
 
