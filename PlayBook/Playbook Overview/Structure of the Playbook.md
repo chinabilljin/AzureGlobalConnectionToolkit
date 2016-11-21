@@ -1,4 +1,4 @@
-##Structure of the Playbook
+#Structure of the Playbook#
 
 The playbook is structured based on the WHO, WHY, WHAT, WHEN and HOW
 
