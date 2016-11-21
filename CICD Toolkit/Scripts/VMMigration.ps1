@@ -1,5 +1,4 @@
-﻿
-Param(
+﻿Param(
   [Parameter(Mandatory=$false)]
   [PSObject] $vm,
 
@@ -41,6 +40,7 @@ if ( $DestContext -ne $null )
   }
 }
 
+#Define Azure Environment
 Enum AzureEnvironment
 {
    AzureCloud = 0

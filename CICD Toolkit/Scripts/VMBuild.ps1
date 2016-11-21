@@ -1,6 +1,6 @@
 ﻿Param(
   [Parameter(Mandatory=$True)]
-  [Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine] $vm,
+  [PSObject] $vm,
 
   [Parameter(Mandatory=$True)]
   [String] $targetLocation,
@@ -12,14 +12,39 @@
   [String[]] $dataDiskUris,
 
   [Parameter(Mandatory=$true)]
-  [Microsoft.Azure.Commands.Profile.Models.PSAzureContext] 
+  [PSObject] 
   $SrcContext,
 
   [Parameter(Mandatory=$true)]
-  [Microsoft.Azure.Commands.Profile.Models.PSAzureContext] 
+  [PSObject] 
   $DestContext  
 
 )
+
+##Parameter Type Check
+if ( $vm -ne $null )
+{
+  if ( $vm.GetType().FullName -ne "Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine" )
+  {
+    Throw "-vm : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine." 
+  }
+}
+
+if ( $SrcContext -ne $null )
+{
+  if ( $SrcContext.GetType().FullName -ne "Microsoft.Azure.Commands.Profile.Models.PSAzureContext" )
+  {
+    Throw "-SrcContext : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Profile.Models.PSAzureContext."
+  }
+}
+
+if ( $DestContext -ne $null )
+{
+  if ( $DestContext.GetType().FullName -ne "Microsoft.Azure.Commands.Profile.Models.PSAzureContext" )
+  {
+    Throw "-DestContext : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Profile.Models.PSAzureContext"
+  }
+}
 
 Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Building VM" -percentComplete 70
 Write-Progress -id 30 -ParentId 0 -activity "Building VM" -status "Started" -percentComplete 0
