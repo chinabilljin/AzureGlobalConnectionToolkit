@@ -309,12 +309,11 @@ foreach ( $resource in $vmResources)
    if($resource.ResourceType -eq "storageAccounts")
    {
        $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.SourceName }
+       if ( $saCheck -eq $null )
+       {
+           $storageAccountNames += $resource.SourceName
+       }
    }
-
-    if ( $saCheck -eq $null )
-    {
-        $storageAccountNames += $resource.SourceName
-    }
 }
 Set-AzureRmContext -Context $DestContext | Out-Null
 Foreach ($storage in $storageAccountNames)
@@ -333,6 +332,10 @@ Foreach ($storage in $storageAccountNames)
      {
         Add-ResultList -result "Success"
      }
+  }
+  else
+  {
+        Add-ResultList -result "SuccessWithWarning" -detail "storage account name exist in the subscription"
   }
 }
 
