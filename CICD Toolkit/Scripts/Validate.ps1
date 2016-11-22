@@ -1,19 +1,45 @@
 ﻿Param(
-[Parameter(Mandatory=$True)]
-[Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine] $vm,
+  [Parameter(Mandatory=$True)]
+  [PSObject] 
+  $vm,
 
-[Parameter(Mandatory=$True)]
-[String] $targetLocation,
+  [Parameter(Mandatory=$True)]
+  [String] $targetLocation,
 
-[Parameter(Mandatory=$true)]
-[Microsoft.Azure.Commands.Profile.Models.PSAzureContext] 
-$SrcContext,
+  [Parameter(Mandatory=$true)]
+  [PSObject] 
+  $SrcContext,
 
-[Parameter(Mandatory=$true)]
-[Microsoft.Azure.Commands.Profile.Models.PSAzureContext] 
-$DestContext  
+  [Parameter(Mandatory=$true)]
+  [PSObject] 
+  $DestContext  
 
 )
+
+##Parameter Type Check
+if ( $vm -ne $null )
+{
+  if ( $vm.GetType().FullName -ne "Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine" )
+  {
+    Throw "-vm : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine." 
+  }
+}
+
+if ( $SrcContext -ne $null )
+{
+  if ( $SrcContext.GetType().FullName -ne "Microsoft.Azure.Commands.Profile.Models.PSAzureContext" )
+  {
+    Throw "-SrcContext : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Profile.Models.PSAzureContext."
+  }
+}
+
+if ( $DestContext -ne $null )
+{
+  if ( $DestContext.GetType().FullName -ne "Microsoft.Azure.Commands.Profile.Models.PSAzureContext" )
+  {
+    Throw "-DestContext : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Profile.Models.PSAzureContext"
+  }
+}
 
 
 Class ResourceProfile
@@ -162,42 +188,46 @@ foreach($dataDisk in $vm.StorageProfile.DataDisks)
 } 
 
 
-#####################################
+####Start Validation####
 Enum ResultType
 {
    Failed = 0
-   Success = 1
-   SuccessWithWarning = 2
+   Succeed = 1
+   SucceedWithWarning = 2
 }
 
 Function Add-ResultList
 {
-Param(
+  Param(
     [Parameter(Mandatory=$True)]
     [ResultType] $result,
     [Parameter(Mandatory=$False)]
     [String] $detail
     )
+    
+    $messageHeader = $null
     switch($result){
         "Failed"{
-            $Script:result = "Failed";
+            $Script:result = "Failed"
+            $messageHeader = "[Error]"
         }
-        "SuccessWithWarning"{
-            if($Script:result -eq "Success"){
-                $Script:result = "SuccessWithWarning"
+        "SucceedWithWarning"{
+            if($Script:result -eq "Succeed"){
+                $Script:result = "SucceedWithWarning"
             }
+            $messageHeader = "[Warning]"
         }
     }
     if($detail){
-        $Script:resultDetailsList += $detail
+        $Script:resultDetailsList += $messageHeader + $detail
     }
 }
 
 Function Get-AzureRmVmCoreFamily
 {
    Param(
-   [Parameter(Mandatory=$True)]
-   [String] $VmSize   
+    [Parameter(Mandatory=$True)]
+    [String] $VmSize   
    )
 
    switch -regex ($VmSize) 
@@ -220,29 +250,27 @@ Function Get-AzureRmVmCoreFamily
     }
 }
 
-$result = "Success"
+#Define Validation Result and Message
+$result = "Succeed"
 $resultDetailsList = @()
-#return success or not, reason
 
 # check src permission
+Set-AzureRmContext -Context $SrcContext | Out-Null
 $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $SrcContext.Account
 
-if($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner") {
-    Add-ResultList -result "Success"
-}
-else {
-    Add-ResultList -result "Failed" -detail "The current user don't have source subscription permission, because the user is not owner or coAdmin"
+if(!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner")) 
+{
+    Add-ResultList -result "Failed" -detail "The current user don't have source subscription permission, because the user is not owner or coAdmin."
 }
 
 
 # check dest permission
+Set-AzureRmContext -Context $DestContext | Out-Null
 $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $DestContext.Account
 
-if($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner") {
-    Add-ResultList -result "Success"
-}
-else {
-    Add-ResultList -result "Failed" -detail "The current user don't have destination subscription permission, because the user is not owner or coAdmin"
+if(!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner")) 
+{
+    Add-ResultList -result "Failed" -detail "The current user don't have source subscription permission, because the user is not owner or coAdmin."
 }
 
 
@@ -264,20 +292,17 @@ $vmFamilyCoreUsage = $vmUsage | Where-Object{$_.Name.LocalizedValue -eq $vmCoreF
 $vmAvailableTotalCore = $vmTotalCoreUsage.Limit - $vmTotalCoreUsage.CurrentValue
 $vmAvailableFamilyCoreUsage = $vmFamilyCoreUsage.Limit - $vmFamilyCoreUsage.CurrentValue
 
-if($vmCoreNumber -gt $vmAvailableTotalCore) {
-    $resultDetail = "The vm core quota validate failed, because Total Regional Cores over quota"
-    Add-ResultList -result "Failed" -detail $resultDetail
+if($vmCoreNumber -gt $vmAvailableTotalCore) 
+{
+    Add-ResultList -result "Failed" -detail ("The vm core quota validate failed, because destination subscription does not have enough regional quota. Current quota left: " + $vmAvailableTotalCore + ". VM required: " + $vmCoreNumber + "." )
 }
-else{
-    Add-ResultList -result "Success"
+
+
+if($vmCoreNumber -gt $vmAvailableFamilyCoreUsage) 
+{
+    Add-ResultList -result "Failed" -detail ("The vm core quota validate failed, because destination subscription does not have enough " + $vmCoreFamily + " quota. Current quota left: " + $vmAvailableFamilyCoreUsage + ". VM required: " + $vmCoreNumber + "." )
 }
-if($vmCoreNumber -gt $vmAvailableFamilyCoreUsage) {
-    $resultDetail = "The vm core quota validate failed, because " + $vmCoreFamily + " over quota"
-    Add-ResultList -result "Failed" -detail $resultDetail
-}
-else{
-    Add-ResultList -result "Success"
-}
+
 
 # Storage Quota Check
 $storageAccountsCount = 0
@@ -291,14 +316,8 @@ $storageAvailable = $storageUsage.Limit - $storageUsage.CurrentValue
 
 if($storageAccountsCount -gt $storageAvailable)
 {
-    $resultDetail = "The storage account quota validate failed, because over enough storage account available"
-    Add-ResultList -result "Failed" -detail $resultDetail
+    Add-ResultList -result "Failed" -detail ("The storage account quota validate failed, because destination subscription does not have enough storage account quota. Current quota left: " + $storageAvailable + ". VM required: " + $storageAccountsCount + "." )
 }
-else
-{
-    Add-ResultList -result "Success"
-}
-
 
 
 # Storage Name Existence
@@ -315,6 +334,7 @@ foreach ( $resource in $vmResources)
        }
    }
 }
+
 Set-AzureRmContext -Context $DestContext | Out-Null
 Foreach ($storage in $storageAccountNames)
 {
@@ -325,21 +345,17 @@ Foreach ($storage in $storageAccountNames)
      $storageAvailability = Get-AzureRmStorageAccountNameAvailability -Name $storage
      if ($storageAvailability.NameAvailable -eq $false)
      {
-        $resultDetail = "The storage account " + $storage + " validate failed, because " + $storageAvailability.Reason
-        Add-ResultList -result "Failed" -detail $resultDetail
+        Add-ResultList -result "Failed" -detail ("The storage account " + $storage + " validate failed, because " + $storageAvailability.Reason)
      }
-     else
-     {
-        Add-ResultList -result "Success"
-     }
+
   }
   else
   {
-        Add-ResultList -result "SuccessWithWarning" -detail "storage account name exist in the subscription"
+        Add-ResultList -result "SucceedWithWarning" -detail ("storage account name: " + $storage + " exist in the subscription")
   }
 }
 
-# DNS Name Check
+## Check DNS Name Availability
 
 foreach ( $resource in $vmResources)
 {
@@ -350,20 +366,15 @@ foreach ( $resource in $vmResources)
         if($sourcePublicAddress.DnsSettings.DomainNameLabel -ne $null)
         {
             $dnsTestResult = Test-AzureRmDnsAvailability -DomainNameLabel $sourcePublicAddress.DnsSettings.DomainNameLabel -Location $targetLocation
-            if($dnsTestResult -eq "True")
+            if($dnsTestResult -ne "True")
             {
-                Add-ResultList -result "Success"
-            }
-            else
-            {
-                $resultDetail = "The dns name " + $sourcePublicAddress.DnsSettings.DomainNameLabel + " validate failed, because DNS name not available in target location."
-                Add-ResultList -result "Failed" -detail $resultDetail
+                Add-ResultList -result "Failed" -detail ("The dns name " + $sourcePublicAddress.DnsSettings.DomainNameLabel + " validate failed, because DNS name not available in target location.")
             }
         }
    }
 }
 
-# Resource Existence
+##Check Resource Existence
 Set-AzureRmContext -Context $DestContext | Out-Null
 
 $DestResources = Get-AzureRmResource 
@@ -373,29 +384,28 @@ foreach ( $resource in $vmResources)
     $resourceCheck = $DestResources | Where-Object {$_.ResourceType -match $resource.ResourceType } | 
                                       Where-Object {$_.ResourceId.Split("/")[4] -eq $resource.SourceResourceGroup} | 
                                       Where-Object {$_.Name -eq $resource.SourceName}
-    if ($resourceCheck -eq $null)
-    { 
-        $resourceResult = "Sucess"
-    }
-    else
+    if ($resourceCheck -ne $null)
     {
         switch ($resource.ResourceType) 
         { 
             "virtualMachines" {$resourceResult = "Failed"} 
             "availabilitySets" {$resourceResult = "Failed"}
             "networkInterfaces" {$resourceResult = "Failed"}
-            "loadBalancers" {$resourceResult = "SuccessWithWarning"}
-            "publicIPAddresses" {$resourceResult = "SuccessWithWarning"}
-            "virtualNetworks" {$resourceResult = "SuccessWithWarning"}
-            "networkSecurityGroups" {$resourceResult = "SuccessWithWarning"}
-            "storageAccounts" {$resourceResult = "SuccessWithWarning"}
+            "loadBalancers" {$resourceResult = "SucceedWithWarning"}
+            "publicIPAddresses" {$resourceResult = "SucceedWithWarning"}
+            "virtualNetworks" {$resourceResult = "SucceedWithWarning"}
+            "networkSecurityGroups" {$resourceResult = "SucceedWithWarning"}
+            "storageAccounts" {$resourceResult = "SucceedWithWarning"}
         }
-        $resultDetail = "The resource type "+$resource.ResourceType+", name " + $resource.SourceName + " validate not successful, because resource name exist"
+        Add-ResultList -result $resourceResult -detail ("The resource:" + $resource.SourceName +  " (type: "+$resource.ResourceType+") in Resource Group: " + $resource.SourceResourceGroup + " already exists in destination.")
     }
-    Add-ResultList -result $resourceResult -detail $resultDetail
+    
 
 
 }
 
-$result
-$resultDetailsList
+$validationResult = New-Object PSObject
+$validationResult | Add-Member -MemberType NoteProperty -Name ValidationResult -Value $result
+$validationResult | Add-Member -MemberType NoteProperty -Name Messages -Value $resultDetailsList
+
+return $validationResult
