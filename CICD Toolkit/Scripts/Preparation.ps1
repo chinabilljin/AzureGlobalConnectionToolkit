@@ -242,5 +242,5 @@ Foreach ($storage in $storageAccounts)
 }
 
 ##Update Progress
-Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Succeeded" -percentComplete 100
+Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Complete" -percentComplete 100
 

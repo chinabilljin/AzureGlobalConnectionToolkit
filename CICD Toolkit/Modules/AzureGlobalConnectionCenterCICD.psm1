@@ -14,9 +14,7 @@
     if ( $module -eq $null )
     { Throw "AzureRm PowerShell Module does not successfully install on PowerShell Environment. Please Install before execute this script." }
 
-    if ( ($module.Version.Major -ge 2) -or (($module.Version.Major -eq 1) -and ( $module.Version.Minor -ge 7 ) ) )
-    { break }
-    else
+    if ( !(($module.Version.Major -ge 2) -or (($module.Version.Major -eq 1) -and ( $module.Version.Minor -ge 7 ))) )
     { Throw "This script requires AzureRm PowerShell version higher than 1.7.0. Please install the latest Azure Powershell before execute this script." }
     
   }
@@ -137,7 +135,7 @@ function Start-AzureRmVMMigrationValidate
   Set-AzureRmContext -Context $SrcContext | Out-Null
 
   #VM
-  $vmResources = @()
+  $Script:vmResources = @()
 
   Add-ResourceList -resourceId $vm.Id
 
@@ -251,13 +249,13 @@ function Start-AzureRmVMMigrationValidate
     switch($result){
         "Failed"{
             $Script:result = "Failed"
-            $messageHeader = "[Error]"
+            $messageHeader = "[Error] "
         }
         "SucceedWithWarning"{
             if($Script:result -eq "Succeed"){
                 $Script:result = "SucceedWithWarning"
             }
-            $messageHeader = "[Warning]"
+            $messageHeader = "[Warning] "
         }
     }
     if($detail){
@@ -293,8 +291,8 @@ function Start-AzureRmVMMigrationValidate
   }
 
   #Define Validation Result and Message
-  $result = "Succeed"
-  $resultDetailsList = @()
+  $Script:result = "Succeed"
+  $Script:resultDetailsList = @()
 
   # check src permission
   Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Permission" -percentComplete 10
@@ -450,8 +448,8 @@ function Start-AzureRmVMMigrationValidate
   Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Complete" -percentComplete 100
 
   $validationResult = New-Object PSObject
-  $validationResult | Add-Member -MemberType NoteProperty -Name ValidationResult -Value $result
-  $validationResult | Add-Member -MemberType NoteProperty -Name Messages -Value $resultDetailsList
+  $validationResult | Add-Member -MemberType NoteProperty -Name ValidationResult -Value $Script:result
+  $validationResult | Add-Member -MemberType NoteProperty -Name Messages -Value $Script:resultDetailsList
 
   return $validationResult
 
@@ -539,7 +537,7 @@ function Start-AzureRmVMMigrationPrepare
 
   ##Handle Resource Group Dependencies: List Distinct Resource Group
   #VM
-  $resourceGroups = @()
+  $Script:resourceGroups = @()
 
   Add-ResourceGroupList -rgName $vm.ResourceGroupName
 
@@ -611,7 +609,7 @@ function Start-AzureRmVMMigrationPrepare
 
 
   #Get the Storage Accountes related to this VM
-  $storageAccounts = @()
+  $Script:storageAccounts = @()
 
   Function Add-StorageList
   {
@@ -676,7 +674,7 @@ function Start-AzureRmVMMigrationPrepare
   Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Creating Storage Accounts" -percentComplete 75
 
   #Create Storage if Not Exist
-  Foreach ($storage in $storageAccounts)
+  Foreach ($storage in $Script:storageAccounts)
   {
     $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage.StorageAccountName}
 
@@ -706,7 +704,7 @@ function Start-AzureRmVMMigrationPrepare
   }
 
   ##Update Progress
-  Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Succeeded" -percentComplete 100
+  Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Complete" -percentComplete 100
 
 
 }
@@ -1090,8 +1088,8 @@ function Start-AzureRmVMMigrationBuild
 
   Set-AzureRmContext -Context $SrcContext | Out-Null
   #VM
-  $resourceGroups = @()
-  $vmResources = @()
+  $Script:resourceGroups = @()
+  $Script:vmResources = @()
 
   Add-ResourceList -resourceId $vm.Id
 
