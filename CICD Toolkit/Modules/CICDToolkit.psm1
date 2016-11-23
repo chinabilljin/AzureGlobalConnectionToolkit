@@ -1027,6 +1027,12 @@ function Start-AzureRmVMMigrationBuild
     }
   }
 
+  if ( $dataDiskUris.Count -ne 0 )
+  {
+    if ($vm.StorageProfile.DataDisks.Count -ne $dataDiskUris.Count)
+    { Throw "-dataDiskUris the number of uris does not match the number of data disks. Please double check your input." }
+  }
+
   ##PS Module Check
   Check-AzureRmMigrationPSRequirement
 
@@ -1468,7 +1474,19 @@ function Start-AzureRmVMMigration
     [Parameter(Mandatory=$false)]
     [PSObject] $DestContext,
 
-    [switch] $validate
+    [switch] $Validate,
+
+    [switch] $Prepare,
+
+    [switch] $VhdCopy,
+
+    [switch] $BuildVM,
+
+    [Parameter(Mandatory=$false)]
+    [String] $osDiskUri,
+
+    [Parameter(Mandatory=$false)]
+    [String[]] $dataDiskUris
   )
 
   ##Parameter Type Check
@@ -1739,10 +1757,34 @@ function Start-AzureRmVMMigration
   }
 
   ##Validation Only
-  if ($validate)
+  if ($Validate)
   {
     $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
     return $validationResult
+  }
+
+  ##Prepare Only
+  if ($Prepare)
+  {
+     Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
+     break
+  }
+
+  ##VHD Copy Only
+  if ($VhdCopy)
+  {
+     $diskUris = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
+     return $diskUris
+  }
+
+  ##VMBuild Only
+  if ($BuildVM)
+  {
+    if([String]::IsNullOrEmpty($osDiskUri) )
+    {
+      Throw ( "-osDiskUri Parameter is null or empty. Please input correct value." )
+    }
+    Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris
   }
 
 
@@ -1773,4 +1815,4 @@ function Start-AzureRmVMMigration
 
 }
 
-Export-ModuleMember -Function Start-AzureRmVMMigration, Start-AzureRmVMMigrationValidate, Start-AzureRmVMMigrationPrepare, Start-AzureRmVMMigrationVhdCopy, Start-AzureRmVMMigrationBuild
+Export-ModuleMember -Function Start-AzureRmVMMigration

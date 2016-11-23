@@ -1,98 +1,101 @@
-﻿Param(
-[Parameter(Mandatory=$True)]
-[PSObject] 
-$vm,
+﻿  Param(
+    [Parameter(Mandatory=$True)]
+    [PSObject] 
+    $vm,
 
-[Parameter(Mandatory=$True)]
-[String] $targetLocation,
+    [Parameter(Mandatory=$True)]
+    [String] $targetLocation,
 
-[Parameter(Mandatory=$true)]
-[PSObject] 
-$SrcContext,
+    [Parameter(Mandatory=$true)]
+    [PSObject] 
+    $SrcContext,
 
-[Parameter(Mandatory=$true)]
-[PSObject] 
-$DestContext  
+    [Parameter(Mandatory=$true)]
+    [PSObject] 
+    $DestContext  
 
-)
+  )
 
-##Parameter Type Check
-if ( $vm -ne $null )
-{
-  if ( $vm.GetType().FullName -ne "Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine" )
+  ##Parameter Type Check
+  if ( $vm -ne $null )
   {
-    Throw "-vm : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine." 
+    if ( $vm.GetType().FullName -ne "Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine" )
+    {
+      Throw "-vm : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine." 
+    }
   }
-}
 
-if ( $SrcContext -ne $null )
-{
-  if ( $SrcContext.GetType().FullName -ne "Microsoft.Azure.Commands.Profile.Models.PSAzureContext" )
+  if ( $SrcContext -ne $null )
   {
-    Throw "-SrcContext : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Profile.Models.PSAzureContext."
+    if ( $SrcContext.GetType().FullName -ne "Microsoft.Azure.Commands.Profile.Models.PSAzureContext" )
+    {
+      Throw "-SrcContext : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Profile.Models.PSAzureContext."
+    }
   }
-}
 
-if ( $DestContext -ne $null )
-{
-  if ( $DestContext.GetType().FullName -ne "Microsoft.Azure.Commands.Profile.Models.PSAzureContext" )
+  if ( $DestContext -ne $null )
   {
-    Throw "-DestContext : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Profile.Models.PSAzureContext"
+    if ( $DestContext.GetType().FullName -ne "Microsoft.Azure.Commands.Profile.Models.PSAzureContext" )
+    {
+      Throw "-DestContext : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Profile.Models.PSAzureContext"
+    }
   }
-}
 
-####Write Progress####
+  ##PS Module Check
+  Check-AzureRmMigrationPSRequirement
 
-Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Preparing Migration" -percentComplete 5
-Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Started" -percentComplete 0
+  ####Write Progress####
 
-####Collecting VM Information####
+  Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Preparing Migration" -percentComplete 5
+  Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Started" -percentComplete 0
 
-Set-AzureRmContext -Context $SrcContext | Out-Null
+  ####Collecting VM Information####
 
-Function Add-ResourceGroupList
-{
-   Param(
-   [Parameter(Mandatory=$True)]
-   [String] $rgName   
-   )
+  Set-AzureRmContext -Context $SrcContext | Out-Null
 
-   $rgCheck = $resourceGroups | Where-Object { $_.ResourceGroupName -eq $rgName }
+  Function Add-ResourceGroupList
+  {
+    Param(
+      [Parameter(Mandatory=$True)]
+      [String] $rgName   
+    )
 
-   if ( $rgCheck -eq $null )
-   {
+    $rgCheck = $resourceGroups | Where-Object { $_.ResourceGroupName -eq $rgName }
+
+    if ( $rgCheck -eq $null )
+    {
       $targetRg = Get-AzureRmResourceGroup -Name $rgName
-      $targetRg.Location = $script:targetLocation
+      $targetRg.Location = $targetLocation
 
       $Script:resourceGroups += $targetRg
-   }
+    }
 
-}
+  }
 
 
-#Get Dependencies
-Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Getting Dependencies" -percentComplete 15
+  #Get Dependencies
+  Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Getting Dependencies" -percentComplete 15
 
-##Handle Resource Group Dependencies: List Distinct Resource Group
-#VM
-$resourceGroups = @()
+  ##Handle Resource Group Dependencies: List Distinct Resource Group
+  #VM
+  $Script:resourceGroups = @()
 
-Add-ResourceGroupList -rgName $vm.ResourceGroupName
+  Add-ResourceGroupList -rgName $vm.ResourceGroupName
 
-#AS
-if ($vm.AvailabilitySetReference -ne $null)
-{
+  #AS
+  if ($vm.AvailabilitySetReference -ne $null)
+  {
     
     Add-ResourceGroupList -rgName $vm.AvailabilitySetReference.Id.Split("/")[4]
     
-}
+  }
    
 
-#NIC
-if ($vm.NetworkInterfaceIDs -ne $null)
-{
-   foreach ( $nicId in $vm.NetworkInterfaceIDs )
-   {
+  #NIC
+  if ($vm.NetworkInterfaceIDs -ne $null)
+  {
+    foreach ( $nicId in $vm.NetworkInterfaceIDs )
+    {
       Add-ResourceGroupList -rgName $nicId.Split("/")[4]
             
       $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId }
@@ -142,105 +145,104 @@ if ($vm.NetworkInterfaceIDs -ne $null)
          Add-ResourceGroupList -rgName $nic.NetworkSecurityGroup.Id.Split("/")[4]
       }
 
-   }
-}
+    }
+  }
 
 
-#Get the Storage Accountes related to this VM
-$storageAccounts = @()
+  #Get the Storage Accountes related to this VM
+  $Script:storageAccounts = @()
 
-Function Add-StorageList
-{
-   Param(
-   [Parameter(Mandatory=$True)]
-   [String] $storName   
-   )
+  Function Add-StorageList
+  {
+    Param(
+      [Parameter(Mandatory=$True)]
+      [String] $storName   
+    )
 
-   $storCheck = $storageAccounts | Where-Object { $_.StorageAccountName -eq $storName }
+    $storCheck = $storageAccounts | Where-Object { $_.StorageAccountName -eq $storName }
 
-   if ( $storCheck -eq $null )
-   {
+    if ( $storCheck -eq $null )
+    {
       $targetStor = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storName }
       $targetStor.Location = $targetLocation
 
       $Script:storageAccounts += $targetStor
-   }
-}
-
-
-#OSDisk
-$osuri = $vm.StorageProfile.OsDisk.Vhd.Uri
-if ( $osuri -match "https" ) {
-$osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)}
-else {
-$osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
-}
-Add-StorageList -storName $osstorname
-
-
-#DataDisk
-foreach($dataDisk in $vm.StorageProfile.DataDisks)
-{
-   $datauri = $dataDisk.Vhd.Uri
-   if ( $osuri -match "https" ) {
-   $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
-   else {
-   $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
-   }
-   Add-StorageList -storName $datastorname
-}
-
-####Create Resource Group and Storage Account in Destination####
-
-##Update Progress
-Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Creating Resource Groups" -percentComplete 50
-
-Set-AzureRmContext -Context $DestContext | Out-Null
-
-#Create Resource Group if Not Exist
-Foreach ($rg in $resourceGroups)
-{
-  $rgCheck = Get-AzureRmResourceGroup -Name $rg.ResourceGroupName -ErrorAction Ignore
-
-  if ($rgCheck -eq $null)
-  {
-     New-AzureRmResourceGroup -Name $rg.ResourceGroupName -Location $rg.Location | Out-Null
+    }
   }
 
-}
 
-Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Creating Storage Accounts" -percentComplete 75
+  #OSDisk
+  $osuri = $vm.StorageProfile.OsDisk.Vhd.Uri
+  if ( $osuri -match "https" ) {
+  $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)}
+  else {
+    $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
+  }
+  Add-StorageList -storName $osstorname
 
-#Create Storage if Not Exist
-Foreach ($storage in $storageAccounts)
-{
-  $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage.StorageAccountName}
 
-  if ( $storageCheck -eq $null )
+  #DataDisk
+  foreach($dataDisk in $vm.StorageProfile.DataDisks)
   {
-     $storageAvailability = Get-AzureRmStorageAccountNameAvailability -Name $storage.StorageAccountName
-     if ($storageAvailability.NameAvailable -eq $false)
-     {
+    $datauri = $dataDisk.Vhd.Uri
+    if ( $osuri -match "https" ) {
+    $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
+    else {
+      $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
+    }
+    Add-StorageList -storName $datastorname
+  }
+
+  ####Create Resource Group and Storage Account in Destination####
+
+  ##Update Progress
+  Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Creating Resource Groups" -percentComplete 50
+
+  Set-AzureRmContext -Context $DestContext | Out-Null
+
+  #Create Resource Group if Not Exist
+  Foreach ($rg in $resourceGroups)
+  {
+    $rgCheck = Get-AzureRmResourceGroup -Name $rg.ResourceGroupName -ErrorAction Ignore
+
+    if ($rgCheck -eq $null)
+    {
+      New-AzureRmResourceGroup -Name $rg.ResourceGroupName -Location $rg.Location | Out-Null
+    }
+
+  }
+
+  Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Creating Storage Accounts" -percentComplete 75
+
+  #Create Storage if Not Exist
+  Foreach ($storage in $Script:storageAccounts)
+  {
+    $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage.StorageAccountName}
+
+    if ( $storageCheck -eq $null )
+    {
+      $storageAvailability = Get-AzureRmStorageAccountNameAvailability -Name $storage.StorageAccountName
+      if ($storageAvailability.NameAvailable -eq $false)
+      {
         Throw ("The storage account " + $storage.StorageAccountName + " cannot be created because " + $storageAvailability.Reason)
-     }
-     else
-     {
-       $skuName = $storage.Sku.Tier.ToString() + "_" + $storage.Sku.Name.ToString().Replace($storage.Sku.Tier.ToString(), "")
+      }
+      else
+      {
+        $skuName = $storage.Sku.Tier.ToString() + "_" + $storage.Sku.Name.ToString().Replace($storage.Sku.Tier.ToString(), "")
        
-       #Here is a version difference the command is for 3.0
-       $rgCheck = Get-AzureRmResourceGroup -Name $storage.ResourceGroupName -ErrorAction Ignore
+        #Here is a version difference the command is for 3.0
+        $rgCheck = Get-AzureRmResourceGroup -Name $storage.ResourceGroupName -ErrorAction Ignore
 
-       if ($rgCheck -eq $null)
-       {
-         New-AzureRmResourceGroup -Name $storage.ResourceGroupName -Location $storage.Location | Out-Null
-       } 
+        if ($rgCheck -eq $null)
+        {
+          New-AzureRmResourceGroup -Name $storage.ResourceGroupName -Location $storage.Location | Out-Null
+        } 
        
-       New-AzureRmStorageAccount -Name $storage.StorageAccountName -ResourceGroupName $storage.ResourceGroupName -Location $storage.Location -SkuName $skuName | Out-Null
-     }
+        New-AzureRmStorageAccount -Name $storage.StorageAccountName -ResourceGroupName $storage.ResourceGroupName -Location $storage.Location -SkuName $skuName | Out-Null
+      }
+    }
+
   }
 
-}
-
-##Update Progress
-Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Complete" -percentComplete 100
-
+  ##Update Progress
+  Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Complete" -percentComplete 100
