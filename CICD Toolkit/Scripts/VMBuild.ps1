@@ -385,7 +385,7 @@ For($i = 1; $i -le 5 ; $i++ )
                       {
                         $resourceCheck = New-Object ResourceMember
                         $resourceCheck.Name = $member.Name
-                        $resourceCheck.Parent = $value
+                        $resourceCheck.Parent = $v
           
                         $newResourceMembers += $resourceCheck
                       }

@@ -524,7 +524,7 @@ function Start-AzureRmVMMigrationPrepare
     if ( $rgCheck -eq $null )
     {
       $targetRg = Get-AzureRmResourceGroup -Name $rgName
-      $targetRg.Location = $script:targetLocation
+      $targetRg.Location = $targetLocation
 
       $Script:resourceGroups += $targetRg
     }
@@ -1369,7 +1369,7 @@ function Start-AzureRmVMMigrationBuild
                         {
                           $resourceCheck = New-Object ResourceMember
                           $resourceCheck.Name = $member.Name
-                          $resourceCheck.Parent = $value
+                          $resourceCheck.Parent = $v
           
                           $newResourceMembers += $resourceCheck
                         }
