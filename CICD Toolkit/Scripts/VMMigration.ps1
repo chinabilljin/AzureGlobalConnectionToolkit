@@ -12,7 +12,9 @@
   [PSObject] $SrcContext,
 
   [Parameter(Mandatory=$false)]
-  [PSObject] $DestContext
+  [PSObject] $DestContext,
+
+  [switch] $validate
 )
 
 ##Parameter Type Check
@@ -279,6 +281,13 @@ else
   $targetLocation = $locationCheck.Location
 }
 
+##Validation Only
+if ($validate)
+{
+  $validationResult = .\Validate.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+  return $validationResult
+}
+
 
 ##Confirm and Deploy
 $migrationConfirmation = [System.Windows.Forms.MessageBox]::Show("Migrate virtual machine: " + $vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")?" , "Azure Global Connection Center" , 4)
@@ -287,6 +296,13 @@ if ($migrationConfirmation -eq "Yes")
 {
   Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Started" -percentComplete 0
 
+  $validationResult = .\Validate.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+
+  if ($validationResult.Result -eq "Failed")
+  {
+    return $validationResult
+  }
+  
   .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
 
   $diskUris = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
@@ -294,4 +310,6 @@ if ($migrationConfirmation -eq "Yes")
   .\VMBuild.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris
 
   Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Succeeded" -percentComplete 100
+  
+  return ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" + "Migration Succeeded")
 }

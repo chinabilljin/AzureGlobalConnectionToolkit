@@ -41,6 +41,11 @@ if ( $DestContext -ne $null )
   }
 }
 
+####Write Progress####
+
+Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Validating" -percentComplete 0
+Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Started" -percentComplete 0
+
 
 Class ResourceProfile
 {
@@ -189,6 +194,8 @@ foreach($dataDisk in $vm.StorageProfile.DataDisks)
 
 
 ####Start Validation####
+
+
 Enum ResultType
 {
    Failed = 0
@@ -255,6 +262,8 @@ $result = "Succeed"
 $resultDetailsList = @()
 
 # check src permission
+Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Permission" -percentComplete 10
+
 Set-AzureRmContext -Context $SrcContext | Out-Null
 $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $SrcContext.Account
 
@@ -274,11 +283,9 @@ if(!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignmen
 }
 
 
-
-#################################
-Set-AzureRmContext -Context $DestContext | Out-Null
- 
 # Core Quota Check
+Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Quota" -percentComplete 30
+Set-AzureRmContext -Context $DestContext | Out-Null
 
 $vmHardwareProfile = Get-AzureRmVmSize -Location $targetLocation | Where-Object{$_.Name -eq $vm.HardwareProfile.VmSize}
 $vmCoreNumber = $vmHardwareProfile.NumberOfCores
@@ -321,7 +328,7 @@ if($storageAccountsCount -gt $storageAvailable)
 
 
 # Storage Name Existence
-
+Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Name Availability" -percentComplete 50
 $storageAccountNames = @()
 foreach ( $resource in $vmResources)
 {
@@ -375,6 +382,7 @@ foreach ( $resource in $vmResources)
 }
 
 ##Check Resource Existence
+Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Resource Existence" -percentComplete 70
 Set-AzureRmContext -Context $DestContext | Out-Null
 
 $DestResources = Get-AzureRmResource 
@@ -403,6 +411,8 @@ foreach ( $resource in $vmResources)
 
 
 }
+
+Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Complete" -percentComplete 100
 
 $validationResult = New-Object PSObject
 $validationResult | Add-Member -MemberType NoteProperty -Name ValidationResult -Value $result
