@@ -24,11 +24,97 @@ CICD (Continuous Integration Continuous Deliver) Tool is a quick and simple tool
 ![Connection Toolkit](https://globalconnectioncenter.blob.core.windows.net/githubpics/connectiontoolkitchart.png)
 
 
+##Features
+
+###Assessment Tool
+
+* Support the assessment from Global Azure to China Azure.
+* Support the assessment for entire subscription.
+* Support the service parity check.
+* Support only limited item for cost estimation.
+
+###CICD Tool
+
+* Support ARM VM migration only. (no classic VM support)
+* Support different Cloud Environment Migration.
+* Support validation only mode.
+* Support data and configuration migration. (no extension support)
+
 ## Supported Environments
+
+###Assessment Tool
+
+* Cloud Environment
+  * Microsoft Azure as reference environment 
+  * Microsoft Azure in China as target environment
+  
+* Client Environment
+  * Windows PowerShell 3.0+
+  
+###CICD Tool
+
+* Cloud Environment
+  * Microsoft Azure
+  * Microsoft Azure in China
+  * Microsoft Azure in Germany
+  * Microsoft Azure in US Government
+
+* Client Environment
+  * Windows PowerShell 3.0+
+  * AzureRm.Profile 1.7.0+
+  * AzureRm.Compute 1.7.0+
+  * AzureRm.Network 1.7.0+
+  * AzureRm.Storage 1.7.0+
 
 ## Installation
 
+###MSI Installer
+
+1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.1.0/GlobalConnectionCenter.msi) .
+2. Run and Install.
+
+You can also find all the previous releases in [Azure Global Connection Toolkit Release](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/tag/0.1.0)
+
 ## Get Started
+
+###Assessment Tool
+
+After installation, run cmdlet in your PoowerSehll.
+
+```
+New-AzureRmMigrationReport
+```
+
+After executing the cmdlet, it will follow the steps to generate report:
+
+1. Ask your credential.
+2. Select reference subscription.
+3. Generate the report.
+
+###CICD Tool
+
+After installation, run cmdlet in your PowerShell if you want to perform a migration.
+
+```
+Start-AzureRmVMMigration
+```
+
+Run cmdlet if you only want to validate.
+
+```
+Start-AzureRmVMMigration -Validate
+```
+
+After executing the cmdlet, it will follow the steps to perform VM migration:
+
+1. Ask your source credential.
+2. Select source subscription.
+3. Ask your destination credential.
+4. Select destination subscription.
+5. Select the VM to migrate.
+6. Select the VM destination location.
+7. Confirm the VM Migration.
+8. Start the VM Migration.
 
 ## Need Help?
 
