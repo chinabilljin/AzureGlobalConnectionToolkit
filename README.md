@@ -21,7 +21,7 @@ Assessment Tool is a quick and simple tool to generate report and answer "Freque
 CICD (Continuous Integration Continuous Deliver) Tool is a quick and simple tool to validate and perform the actual migration as script base. For example, you can leverage the toolkit to migrate your VMs from East Asia to China East. The toolkit will sync your data and configuration so that everything is as same as original. Moreover, the scripts is opensource so you can just integrate into your own DevOps process to perform CICD between Azure Environments.
 
 
-![Connection Center](https://globalconnectioncenter.blob.core.windows.net/githubpics/connectiontoolkitchart.png)
+![Connection Toolkit](https://globalconnectioncenter.blob.core.windows.net/githubpics/connectiontoolkitchart.png)
 
 
 ## Supported Environments
@@ -32,4 +32,4 @@ CICD (Continuous Integration Continuous Deliver) Tool is a quick and simple tool
 
 ## Need Help?
 
-Please contact [Azure Global Connection Center Team](mailto:amcteam@microsoft.com) if you have any issue or feedback.
+Please contact [Azure Global Connection Team](mailto:amcteam@microsoft.com) if you have any issue or feedback.
