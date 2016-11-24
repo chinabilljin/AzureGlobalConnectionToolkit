@@ -81,7 +81,7 @@ You can also find all the previous releases in [Azure Global Connection Toolkit 
 
 After installation, run cmdlet in your PoowerSehll.
 
-```
+```powershell
 New-AzureRmMigrationReport
 ```
 
@@ -95,13 +95,13 @@ After executing the cmdlet, it will follow the steps to generate report:
 
 After installation, run cmdlet in your PowerShell if you want to perform a migration.
 
-```
+```powershell
 Start-AzureRmVMMigration
 ```
 
 Run cmdlet if you only want to validate.
 
-```
+```powershell
 Start-AzureRmVMMigration -Validate
 ```
 
