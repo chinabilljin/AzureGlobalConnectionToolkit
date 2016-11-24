@@ -1,4 +1,4 @@
-# AzureGlobalConnectionCenter
+# AzureGlobalConnectionToolkit
 The goal of Azure Global Connection Center is to connect different national clouds that eliminate the friction to migrate different Azure national clouds.
 
 Typically, migration / integration between different Cloud environment has three phases:
