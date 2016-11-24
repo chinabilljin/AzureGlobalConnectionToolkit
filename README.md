@@ -12,7 +12,7 @@ Users need to validate if the services are able to run in target environment. Us
 3. **Migrate**:
 After planning and validating, users need to investigate how to migrate/clone thier current workload into new environment. The complexity of technologies and steps block user to perform a migration.
 
-In order to help users in each step, Azure Global Connection Center offers three components:
+In order to help users in each step, Azure Global Connection Center offers two components:
 
 - **Assessment Tool**:
 Assessment Tool is a quick and simple tool to generate report and answer "Frequent Asked Question" when migrating Azure Services between different environment like service parity, cost estimation and considerations. It is a PowerShell Module and after install you can start assessment your subscription to make sure the plan and validation of migration.
