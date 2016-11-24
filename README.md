@@ -34,3 +34,5 @@ CICD (Continuous Integration Continuous Deliver) Toolkit is a quick and simple t
 ## Get Started
 
 ## Need Help?
+
+Please contact [Azure Global Connection Center Team](mailto:amcteam@microsoft.com) if you have any issue or feedback.
