@@ -27,8 +27,6 @@ CICD (Continuous Integration Continuous Deliver) Toolkit is a quick and simple t
 ![Connection Center](https://globalconnectioncenter.blob.core.windows.net/githubpics/globalconnectioncenterchart.png)
 
 
-## Features
-
 ## Supported Environments
 
 ## Installation
