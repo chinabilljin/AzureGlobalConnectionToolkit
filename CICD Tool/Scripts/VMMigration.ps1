@@ -34,7 +34,7 @@
   {
     if ( $vm.GetType().FullName -ne "Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine" )
     {
-      Throw "`$vm : parameter type is invalid. Please enter the right parameter type." 
+      Throw "-vm : parameter type is invalid. Please enter the right parameter type." 
     }
   }
 
@@ -42,7 +42,7 @@
   {
     if ( $SrcContext.GetType().FullName -ne "Microsoft.Azure.Commands.Profile.Models.PSAzureContext" )
     {
-      Throw "`$SrcContext : parameter type is invalid. Please enter the right parameter type."
+      Throw "-SrcContext : parameter type is invalid. Please enter the right parameter type."
     }
   }
 
@@ -50,7 +50,7 @@
   {
     if ( $DestContext.GetType().FullName -ne "Microsoft.Azure.Commands.Profile.Models.PSAzureContext" )
     {
-      Throw "`$DestContext : parameter type is invalid. Please enter the right parameter type."
+      Throw "-DestContext : parameter type is invalid. Please enter the right parameter type."
     }
   }
 
@@ -177,144 +177,175 @@
   }
 
   ##Get the parameter if not provided
-
-  if ( $SrcContext -eq $null )
+  Try
   {
-    $SrcEnv = SelectionBox -title "Please Select the Source Environment" -options ("Global Azure", "Germany Azure", "China Azure")
-    Switch ( $SrcEnv )
+    if ( $SrcContext -eq $null )
     {
-      "China Azure" { $SrcEnvironment = [AzureEnvironment] "AzureChinaCloud" }
-      "Germany Azure" { $SrcEnvironment = [AzureEnvironment] "AzureGermanCloud" }
-      "Global Azure" { $SrcEnvironment = [AzureEnvironment] "AzureCloud" }
-    }
-
-    [Windows.Forms.MessageBox]::Show("Please Enter " + $SrcEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
-    Add-AzureRmAccount -EnvironmentName $SrcEnvironment | Out-Null
-
-    $subscriptions = Get-AzureRmSubscription
-    $subList = @()
-
-    ForEach ( $sub in $subscriptions )
-    {
-      $subList += $sub.SubscriptionName
-    }
-
-    $subscription = SelectionBox -title "Please Select the Source Subscription" -options $subList
-
-    Select-AzureRmSubscription -SubscriptionName $Subscription | Out-Null
-
-    $SrcContext = Get-AzureRmContext
-  }
-
-
-  if ($destContext -eq $null )
-  {
-    if ([string]::IsNullOrEmpty($destEnvironment))
-    {
-      $destEnv = SelectionBox -title "Please Select the Destination Environment" -options ("China Azure", "Germany Azure", "Global Azure")
-      Switch ( $destEnv )
+      $SrcEnv = SelectionBox -title "Please Select the Source Environment" -options ("Global Azure", "Germany Azure", "China Azure")
+      Switch ( $SrcEnv )
       {
-        "China Azure" { $destEnvironment = [AzureEnvironment] "AzureChinaCloud" }
-        "Germany Azure" { $destEnvironment = [AzureEnvironment] "AzureGermanCloud" }
-        "Global Azure" { $destEnvironment = [AzureEnvironment] "AzureCloud" }
+        "China Azure" { $SrcEnvironment = [AzureEnvironment] "AzureChinaCloud" }
+        "Germany Azure" { $SrcEnvironment = [AzureEnvironment] "AzureGermanCloud" }
+        "Global Azure" { $SrcEnvironment = [AzureEnvironment] "AzureCloud" }
       }
+
+      [Windows.Forms.MessageBox]::Show("Please Enter " + $SrcEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
+      Add-AzureRmAccount -EnvironmentName $SrcEnvironment | Out-Null
+
+      $subscriptions = Get-AzureRmSubscription
+      $subList = @()
+
+      ForEach ( $sub in $subscriptions )
+      {
+        $subList += $sub.SubscriptionName
+      }
+
+      $subscription = SelectionBox -title "Please Select the Source Subscription" -options $subList
+
+      Select-AzureRmSubscription -SubscriptionName $Subscription | Out-Null
+
+      $SrcContext = Get-AzureRmContext
+    }
+
+
+    if ($destContext -eq $null )
+    {
+      if ([string]::IsNullOrEmpty($destEnvironment))
+      {
+        $destEnv = SelectionBox -title "Please Select the Destination Environment" -options ("China Azure", "Germany Azure", "Global Azure")
+        Switch ( $destEnv )
+        {
+          "China Azure" { $destEnvironment = [AzureEnvironment] "AzureChinaCloud" }
+          "Germany Azure" { $destEnvironment = [AzureEnvironment] "AzureGermanCloud" }
+          "Global Azure" { $destEnvironment = [AzureEnvironment] "AzureCloud" }
+        }
+      }
+      else
+      {
+        $destEnvironment = [AzureEnvironment] $destEnvironment
+      }
+
+      [Windows.Forms.MessageBox]::Show("Please Enter " + $destEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
+      Add-AzureRmAccount -EnvironmentName $destEnvironment | Out-Null
+
+      $subscriptions = Get-AzureRmSubscription
+      $subList = @()
+
+      ForEach ( $sub in $subscriptions )
+      {
+        $subList += $sub.SubscriptionName
+      }
+
+      $subscription = SelectionBox -title "Please Select the Desitnation Subscription" -options $subList
+
+      Select-AzureRmSubscription -SubscriptionName $Subscription | Out-Null
+
+      $destContext = Get-AzureRmContext
+    }
+
+    if ( $vm -eq $null )
+    {
+      Set-AzureRmContext -Context $SrcContext | Out-Null
+
+      $vms = Get-AzureRmVM
+      $vmList = @()
+
+      ForEach ( $v in $vms )
+      {
+        $vmDescription = $v.Name + "(Resource Group:" + $v.ResourceGroupName +")"
+        $vmList += $vmDescription
+      }
+
+      $vmSelected = SelectionBox -title "Please Select the VM to Migrate" -options $vmList
+
+      $vmName = $vmSelected.Split("(")[0]
+      $vmResourceGroupName = $vmSelected.Split(":")[1].Replace(")","")
+
+      $vm = Get-AzureRmVM -ResourceGroupName $vmResourceGroupName -Name $vmName
+  
+    }
+
+
+    if ([string]::IsNullOrEmpty($targetLocation))
+    {
+      Set-AzureRmContext -Context $DestContext | Out-Null
+  
+      $locations = Get-AzureRmLocation
+      $locationList = @()
+
+      ForEach ( $loc in $locations )
+      {
+        $locationList += $loc.DisplayName
+      }
+
+      $Location = SelectionBox -title "Please Select the Destination Location" -options $locationList
+      $targetLocation = ($locations | Where-Object { $_.DisplayName -eq $Location }).Location
     }
     else
     {
-      $destEnvironment = [AzureEnvironment] $destEnvironment
-    }
-
-    [Windows.Forms.MessageBox]::Show("Please Enter " + $destEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
-    Add-AzureRmAccount -EnvironmentName $destEnvironment | Out-Null
-
-    $subscriptions = Get-AzureRmSubscription
-    $subList = @()
-
-    ForEach ( $sub in $subscriptions )
-    {
-      $subList += $sub.SubscriptionName
-    }
-
-    $subscription = SelectionBox -title "Please Select the Desitnation Subscription" -options $subList
-
-    Select-AzureRmSubscription -SubscriptionName $Subscription | Out-Null
-
-    $destContext = Get-AzureRmContext
-  }
-
-  if ( $vm -eq $null )
-  {
-    Set-AzureRmContext -Context $SrcContext | Out-Null
-
-    $vms = Get-AzureRmVM
-    $vmList = @()
-
-    ForEach ( $v in $vms )
-    {
-      $vmDescription = $v.Name + "(Resource Group:" + $v.ResourceGroupName +")"
-      $vmList += $vmDescription
-    }
-
-    $vmSelected = SelectionBox -title "Please Select the VM to Migrate" -options $vmList
-
-    $vmName = $vmSelected.Split("(")[0]
-    $vmResourceGroupName = $vmSelected.Split(":")[1].Replace(")","")
-
-    $vm = Get-AzureRmVM -ResourceGroupName $vmResourceGroupName -Name $vmName
+      Set-AzureRmContext -Context $DestContext | Out-Null
   
-  }
+      $locations = Get-AzureRmLocation
 
+      $locationCheck = $locations | Where-Object { ($_.DisplayName -eq $targetLocation) -or ( $_.Location -eq $targetLocation ) }
 
-  if ([string]::IsNullOrEmpty($targetLocation))
-  {
-    Set-AzureRmContext -Context $DestContext | Out-Null
-  
-    $locations = Get-AzureRmLocation
-    $locationList = @()
+      if ( $locationCheck -eq $null )
+      {
+        Throw ( "The targetLocation " + $targetLocation + " is invalid." )
+      }
 
-    ForEach ( $loc in $locations )
-    {
-      $locationList += $loc.DisplayName
+      $targetLocation = $locationCheck.Location
     }
-
-    $Location = SelectionBox -title "Please Select the Destination Location" -options $locationList
-    $targetLocation = ($locations | Where-Object { $_.DisplayName -eq $Location }).Location
   }
-  else
+  Catch
   {
-    Set-AzureRmContext -Context $DestContext | Out-Null
-  
-    $locations = Get-AzureRmLocation
-
-    $locationCheck = $locations | Where-Object { ($_.DisplayName -eq $targetLocation) -or ( $_.Location -eq $targetLocation ) }
-
-    if ( $locationCheck -eq $null )
-    {
-      Throw ( "The targetLocation " + $targetLocation + " is invalid." )
-    }
-
-    $targetLocation = $locationCheck.Location
+    Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+    Throw "Input Parameters are not set correctly. Please try again."
   }
 
   ##Validation Only
   if ($Validate)
   {
-    $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+    Try
+    {
+      $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+    }
+    Catch
+    {
+      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      Throw "Validation Failed. Please check the error message and try again."
+    }
     return $validationResult
   }
 
   ##Prepare Only
   if ($Prepare)
   {
-     Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
-     break
+    Try
+    {
+      Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
+    }
+    Catch
+    {
+      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      Throw "Preparation Failed. Please check the error message and try again."
+    }
+    break
   }
 
   ##VHD Copy Only
   if ($VhdCopy)
   {
-     $diskUris = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
-     return $diskUris
+    Try
+    { 
+      $diskUris = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
+    }
+    Catch
+    {
+      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      Throw "Vhd Copy Failed. Please check the error message and try again."
+    }
+    return $diskUris
   }
 
   ##VMBuild Only
@@ -324,7 +355,16 @@
     {
       Throw ( "-osDiskUri Parameter is null or empty. Please input correct value." )
     }
-    Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris
+    
+    Try
+    {
+      Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris
+    }
+    Catch
+    {
+      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      Throw "VM Building Failed. Please check the error message and try again."
+    } 
   }
 
 
@@ -335,19 +375,50 @@
   {
     Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Started" -percentComplete 0
 
-    $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
-
+    Try
+    {
+      $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+    }
+    Catch
+    {
+      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      Throw "Validation Failed. Please check the error message and try again."
+    }
+    
     if ($validationResult.Result -eq "Failed")
     {
       return $validationResult
     }
   
-    Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
-
-    $diskUris = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
-
-    Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris
-
+    Try
+    {
+      Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
+    }
+    Catch
+    {
+      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      Throw "Preparation Failed. Please check the error message and try again."
+    }
+    
+    Try
+    {
+      $diskUris = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
+    }
+    Catch
+    {
+      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      Throw "Vhd Copy Failed. Please check the error message and try again."
+    }
+    
+    Try
+    {
+      Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris
+    }
+    Catch
+    {
+      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      Throw "VM Building Failed. Please check the error message and try again."
+    }
     Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Succeeded" -percentComplete 100
   
     return ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" + "Migration Succeeded")

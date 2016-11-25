@@ -10,7 +10,7 @@ FunctionsToExport = @('New-AzureRmMigrationReport')
 VariablesToExport = "*"
 AliasesToExport = '*'
 FileList = @('Microsoft.Azure.CAT.Migration.PowerShell.dll',
-             'Assessmentkit.psd1')
+             'AssessmentTool.psd1')
 RequiredModules = @()
-HelpInfoURI = 'https://github.com/Azure/AzureGlobalConnectionCenter'
+HelpInfoURI = 'https://github.com/Azure/AzureGlobalConnectionToolkit'
 }

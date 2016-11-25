@@ -1,5 +1,5 @@
 @{
-RootModule = 'CICDToolkit.psm1'
+RootModule = 'CICDTool.psm1'
 ModuleVersion = '0.1.0'
 GUID = '6cee1522-3669-4bba-b537-c1b3ae4f10c3'
 Author = 'Microsoft Corporation'
@@ -9,8 +9,8 @@ Description = 'Azure Global Connection Center is to connect different national c
 FunctionsToExport = @('Start-AzureRmVMMigration')
 VariablesToExport = "*"
 AliasesToExport = '*'
-FileList = @('CICDToolkit.psm1',
-             'CICDToolkit.psd1')
+FileList = @('CICDTool.psm1',
+             'CICDTool.psd1')
 RequiredModules = @()
-HelpInfoURI = 'https://github.com/Azure/AzureGlobalConnectionCenter'
+HelpInfoURI = 'https://github.com/Azure/AzureGlobalConnectionToolkit'
 }
