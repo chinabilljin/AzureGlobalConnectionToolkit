@@ -108,7 +108,7 @@
    
     Set-AzureRmContext -Context $SrcContext | Out-Null
     $datauri = $dataDisk.Vhd.Uri
-    if ( $osuri -match 'https' ) {
+    if ( $datauri -match 'https' ) {
     $dataDiskInfo.SrcAccountName = $datauri.Substring(8, $datauri.IndexOf('.blob') - 8)}
     else {
       $dataDiskInfo.SrcAccountName = $datauri.Substring(7, $datauri.IndexOf('.blob') - 7)

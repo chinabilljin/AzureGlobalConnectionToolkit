@@ -217,7 +217,7 @@ function Start-AzureRmVMMigrationValidate
   foreach($dataDisk in $vm.StorageProfile.DataDisks)
   {
     $datauri = $dataDisk.Vhd.Uri
-    if ( $osuri -match "https" ) {
+    if ( $datauri -match "https" ) {
     $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
     else {
       $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
@@ -644,7 +644,7 @@ function Start-AzureRmVMMigrationPrepare
   foreach($dataDisk in $vm.StorageProfile.DataDisks)
   {
     $datauri = $dataDisk.Vhd.Uri
-    if ( $osuri -match "https" ) {
+    if ( $datauri -match "https" ) {
     $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
     else {
       $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
@@ -821,7 +821,7 @@ function Start-AzureRmVMMigrationVhdCopy
    
     Set-AzureRmContext -Context $SrcContext | Out-Null
     $datauri = $dataDisk.Vhd.Uri
-    if ( $osuri -match 'https' ) {
+    if ( $datauri -match 'https' ) {
     $dataDiskInfo.SrcAccountName = $datauri.Substring(8, $datauri.IndexOf('.blob') - 8)}
     else {
       $dataDiskInfo.SrcAccountName = $datauri.Substring(7, $datauri.IndexOf('.blob') - 7)
