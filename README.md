@@ -57,14 +57,10 @@ CICD (Continuous Integration Continuous Deliver) Tool is a quick and simple tool
   * Microsoft Azure
   * Microsoft Azure in China
   * Microsoft Azure in Germany
-  * Microsoft Azure in US Government
 
 * Client Environment
   * Windows PowerShell 3.0+
-  * AzureRm.Profile 1.7.0+
-  * AzureRm.Compute 1.7.0+
-  * AzureRm.Network 1.7.0+
-  * AzureRm.Storage 1.7.0+
+  * Latest Azure PowerShell Recommended
 
 ## Installation
 
