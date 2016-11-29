@@ -42,3 +42,73 @@ ARM VM Migration has two mode:
 2. Put them into same folder
 
 ## Get Started
+
+### ARM VM Migration
+
+#### Module Mode
+
+Base command in module mode:
+
+```powershell
+Start-AzureRmVMMigration
+```
+
+If you use this command without any parameter, there will be a GUI to guide you input the information step by step.
+
+For the customer want to input the information programatically through parameter, here is the parameter list and description.
+
+__-VM__
+
+The VM context which you want to migrate, you can get the context through 
+
+```powershell
+$vm = Get-AzureRmVM -name VMName -ResourceGroupName RGName
+```
+
+Then use $vm as parameter input.
+
+__-SrcContext__
+
+The credential from source subscription, you can get the context after you input the credential (like after Add-AzureRmAccount) through
+
+```powershell
+$SrcContext = Get-AzureRmContext
+```
+
+Then use $SrcContext as parameter input
+
+__-DestContext__
+The credential from destination subscription, you can get the context after you input the credential (like after Add-AzureRmAccount) through
+
+```powershell
+$DestContext = Get-AzureRmContext
+```
+
+Then use $DestContext as parameter input
+
+__-TargetLocation__
+
+The target location VM migrate to. you can use Get-AzureRmLocation to get the full location list.
+
+If you want to perform specific phase only rather than the whole migration, you can use following parameters:
+
+__-Validate__
+
+It will perform validation only and return the check result.
+
+__-Prepare__
+
+It will create the resource group and storage accounts for migration.
+
+__-VhdCopy__
+
+It will copy the VHDs of VM to destination. But the storage accounts in destination need to be created before execute this commend.
+
+__-BuildVM__
+
+It will start the VM build up in destination. But the VHD Copy and Resource Group creation need to be done ahead. Performing this command also require to input __-osDiskUri__ and __-dataDiskUris__ if any. Please note it in __-dataDiskUris__, the input array need to matach in lun number to make sure the configuration consistent.
+
+For example, $dataDiskUris is the input of __-dataDiskUris__. $dataDiskUris[0] should the the destination data Disk Lun 0's Uri.
+
+
+
