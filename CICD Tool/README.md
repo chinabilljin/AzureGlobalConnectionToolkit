@@ -25,6 +25,20 @@ ARM VM Migration has two mode:
 
 * __Module Mode:__ Module Mode is quick and simple solution and you can use it as a built-in PowerShell module. This is the best option if you need a just work solution.
 
-* __Scripts Mode:__ Script Mode is open source solution composed by the scripts of each phase. You can download the script and modify by yourself. This is the best option if you need a customized solution.
+* __Script Mode:__ Script Mode is open source solution composed by the scripts of each phase. You can download the script and modify by yourself. This is the best option if you need a customized solution.
 
-##Installation
+## Installation
+
+### ARM VM Migration
+
+#### Module Mode
+
+1. Download the [msi installer]()
+2. Install
+
+#### Script Mode
+
+1. Download all the [scripts](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool/Scripts)
+2. Put them into same folder
+
+## Get Started
