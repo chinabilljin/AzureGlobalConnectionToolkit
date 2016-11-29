@@ -110,5 +110,23 @@ It will start the VM build up in destination. But the VHD Copy and Resource Grou
 
 For example, $dataDiskUris is the input of __-dataDiskUris__. $dataDiskUris[0] should the the destination data Disk Lun 0's Uri.
 
+#### Script Mode
+
+The Script mode consists by five scripts:
+
+1. __VMMigration.ps1:__ All up integrated script for the VM migration. Execute it if you want the end-to-end migration.
+2. __Validate.ps1:__ Validate only script.
+3. __Prepare.ps1:__ Prepare only script.
+4. __CopyVhd.ps1:__ Vhd copy only script.
+5. __VMBuild.ps1:__ VM build only script.
+
+All the script use the same parameter as Module Mode. You can see the parameter description in Module Mode section above.
+
+Also, it has a simple validation function for your PowerShell Environment:
+
+* __CheckAzurePSVersion:__ Check if Azure PS meet the requirement.
+
+Also, if you want to customize the script. We also put comments inside the script so you can understand the logic of each block and make your version or integrate into your DevOps Process!
+
 
 
