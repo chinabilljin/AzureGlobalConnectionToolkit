@@ -110,6 +110,8 @@ It will start the VM build up in destination. But the VHD Copy and Resource Grou
 
 For example, $dataDiskUris is the input of __-dataDiskUris__. $dataDiskUris[0] should the the destination data Disk Lun 0's Uri.
 
+
+
 #### Script Mode
 
 The Script mode consists by five scripts:
@@ -128,5 +130,6 @@ Also, it has a simple validation function for your PowerShell Environment:
 
 Also, if you want to customize the script. We also put comments inside the script so you can understand the logic of each block and make your version or integrate into your DevOps Process!
 
+## Need Help?
 
-
+Please contact [Azure Global Connection Team](mailto:amcteam@microsoft.com) if you have any issue or feedback.
