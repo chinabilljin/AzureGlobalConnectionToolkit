@@ -50,6 +50,7 @@ CICD (Continuous Integration Continuous Deliver) Tool is a quick and simple tool
   
 * Client Environment
   * Windows PowerShell 3.0+
+  * Internet Connectivity to refernece environment and target environment.
   
 ###CICD Tool
 
@@ -61,6 +62,7 @@ CICD (Continuous Integration Continuous Deliver) Tool is a quick and simple tool
 * Client Environment
   * Windows PowerShell 3.0+
   * Latest Azure PowerShell Recommended
+  * Internet Connectivity to source environment and destination environment.
 
 ## Installation
 
