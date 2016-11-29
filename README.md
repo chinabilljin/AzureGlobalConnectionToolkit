@@ -114,6 +114,8 @@ After executing the cmdlet, it will follow the steps to perform VM migration:
 7. Confirm the VM Migration.
 8. Start the VM Migration.
 
+If you want to discover more or customize the script, please visit [CICD Tool](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool)
+
 ## More Guidance
 
 If you target to investigate Azure in China, we highly recommend to browse [Azure China Playbook](https://aka.ms/azurechinaplaybook). Azure China Playbook contains the answers of FAQ when users consider to migrate or start using Azure in China.
