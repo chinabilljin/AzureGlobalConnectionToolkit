@@ -68,7 +68,7 @@ CICD (Continuous Integration Continuous Deliver) Tool is a quick and simple tool
 
 ###MSI Installer
 
-1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.0.1/AzureGlobalConnectionToolkit.msi) .
+1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.1.0/AzureGlobalConnectionToolkit.0.1.0.msi) .
 2. Run and Install.
 
 You can also find all the previous releases in [Azure Global Connection Toolkit Release](https://github.com/Azure/AzureGlobalConnectionToolkit/releases)
