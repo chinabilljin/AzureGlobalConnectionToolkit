@@ -1,0 +1,286 @@
+ea4a8814-d834-4c27-8962-e515d6a14bfd	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+a902daa7-3449-49d0-8299-1f28c6476ea6	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+d100befb-3816-47b2-9685-748deaa8cf9b	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+0984b7ed-975f-4dd1-8ba1-db05b74796d1	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+7fee4018-c73d-4765-9c46-98b2b9b57b16	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+ae64446c-5ad8-45da-9a2e-703b0e9abc79				
+767660fa-525b-436f-a375-6da3e26f09b2				
+e3c4a934-9ce7-40a6-9a6b-4e1e8ca6bd98	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+0187b977-d63a-402b-8b11-106c54af6aff	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+cdd937d6-47df-41f7-87ce-d55f7fa4a208	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+3000577a-6739-4aba-93f3-773e6cedd7ab	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+42e2a22f-fabf-41ea-a21e-e86bb3ff5799	storage-general-purpose-page-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）	default
+ba2e6c04-d521-4fb5-929b-5eaf7bd62db7	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+2d4b5ae6-b580-4c6b-9d08-30289d910b24	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+fa7ee529-9c03-4b0a-9007-f7671e15bbd3	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+7795898b-6d7a-40fe-a12c-2d950d773e5a	storage-general-purpose-page-blob-access	LRS	放置页 Blob、创建容器操作（按 10,000 计）	default
+11214343-48e4-4b8a-8fb7-f2ed23716f2e	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+dff6ed03-1385-4a67-a854-d40aecaf7957	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+8fc68c4c-2c37-4079-8493-fea12df31298	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+f4e889a2-6224-46c8-ac42-40a209df8c12	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+e3a600a6-5a85-4679-9721-1c0d192ed142	storage-general-purpose-table-access	LRS	表删除操作 （按 10,000 计）	default
+7dc6af9f-7a28-4bf6-a3ef-91d3473d19a6	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+8f5f73d5-08fc-419e-9e6d-40d64ff9fec8	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+4f1e5f9b-2b4a-4638-b71d-be64c7afee16	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+a287a48c-8d94-49e5-a745-b46c130521b5	storage-general-purpose-page-blob-access	LRS	放置页 Blob、创建容器操作（按 10,000 计）	default
+cc7a7284-897d-49e3-b737-af53983ebadc	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+9cc63cf8-6593-410a-b0e7-26a4ef71e8b3				
+d3824379-dc7e-472b-9e67-3f4a7eadc05b	storage-general-purpose-page-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）	default
+2c2efcf3-50fb-43a0-b253-75f3bdd09afe	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+62472b82-91e2-47c0-9650-9835b5259fe3	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+d0ab06d5-71d6-4b8b-8507-41b72af59f4b	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+d333fd89-e3d0-45a0-871e-e4a4061ae0ee	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+29419ca9-a71a-464b-b80d-a35854227b40	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+7ec34f4c-ee1e-4395-9090-ff818baadf30	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+9dbadd95-5f52-454f-9002-c666a8aff87d	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+b065882b-982f-43ba-bba1-1308221cf860	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+37dff8e1-5245-43b4-a2d0-dfcc1145759d	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+d3103db5-2146-405b-9e46-342ba37f3c30	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+0fce87c2-1eb6-4f6c-90bf-60aa0e40576b	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+ec5cddbb-fbb1-4baa-8219-f19ef8cf7786	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+5d2ce9e0-3e31-4726-93fe-9f7ce4d04d99	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+c01dd06c-7dc9-4534-934c-dff44042aeb0	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+e3ba6ef4-8da7-4781-b3f9-34c966e06ce0	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+5ebb1769-35d6-481a-b69a-3207e48f1e5f	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+055c6194-6151-4d30-9e38-f40fe9c21b73	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+81cdc11f-5653-4c41-ba45-7fb2d7db5f01	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+14b8095c-55d1-40ff-a790-396657206a77	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+79f04bb5-2872-4b4e-84c5-c6b6006b4503	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+6cc3fdfd-45fb-430d-846d-f9ba872b2342	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+edd2d43c-473b-4b80-b11e-c044fcb0255d	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+a79ff50e-8ce0-4944-8abd-dba53e60178a	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+7c7d0d87-ac55-438a-b6f3-e966d249ef85	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+1ad2312d-b4a1-428e-972f-01d5b511c7f5	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+be63f96a-ef4b-42c1-9365-f9fa0e7431d0	storage-general-purpose-file-access	LRS	列出容器操作（按 10,000 计）	default
+ef7de424-8c0a-43b9-9863-d82fe5e9443c	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+36c961e5-3c53-4481-b339-a10c6fe0f491	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+c3c75f61-3ad2-4c65-adfb-ea824f22ac2d	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+37c7e193-26a7-4e2d-bf8d-f30588fbc6f8	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+391dd9ba-465c-41e8-8ac0-5c0d5c05e67b	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+880be4a2-e038-4d1f-ad41-81864e7b278d	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+23e1ac7a-73e3-48fe-80d4-27e129d74e5d	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+7005237e-58cc-4800-9432-5cbaf104d124	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+2f252a64-b5b9-4af7-be23-736debec89d5	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+297d6b49-87be-4b70-97fe-0fc31ec85287				
+02f80beb-65da-4fde-8fbb-484f460aa817	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+23fbf784-511f-4590-a64c-80a2a673e4a9	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+5a28a0dc-06ef-48ac-97d1-5787cc12d68e	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+2a6a7e4a-7f6d-4c10-8652-83e0c62e4c08	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+132ade99-fcb8-48d8-a971-23e81cbfc90a	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+538201b5-1e82-43c3-9043-9a19f9ce16f0	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+43235116-3f85-49f7-a20c-63636a0631eb	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+1dc5d5cb-9336-44aa-ae29-25dda8c4cd2c	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+8377fc32-8a1a-44af-942f-0a1af85dc4d0	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+f786602e-05dc-4157-8b85-c4b587d0aaf7	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+1cd23e91-a422-4dc3-acbc-feafc509f19c	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+d618ab9b-6d75-454a-9bbd-3a3bc01c927a	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+65d33994-62be-46ce-9e4d-c154f959cd8b	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+baf0f0b4-ce1f-4d7b-81e6-b131b708858d	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+b35b5025-28c3-483b-b2e4-66c604cf65b9	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+13553d04-5057-4557-872b-cafaf85e256a	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+459af3c2-cf85-468d-ae77-c096858dfef5	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+2f56f873-79b9-4430-a56a-3a9f593e7f04	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+e5b4772e-90c2-44e5-b2cc-85e4cf890f75	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+c222aaad-992b-41a6-bb37-237606580565	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+8adf9e3c-41d6-473c-ae9d-7b42c4eba895	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+556704ad-c004-4017-9e2c-d7f451ec0dee	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+f14382b0-1838-48e9-9314-c7b6eababc81				
+47ae2469-9fd8-4f1e-9a05-5900b470d8b4	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+c12cb4fa-c6cf-4972-98c0-eb65115d669d	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+4b471c53-cfaa-4c1d-8325-4ebabac62212	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+c5248cf8-ecba-4807-9304-6a8f14b5805a	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+a697336a-8ef0-43f3-9e07-1f1e66cebd52	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+599d8114-9825-4572-a41e-6f6540eda937	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+b1c3135c-e5b0-4d3c-b945-7fff5a62942c	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+925a20b0-36af-480d-b740-418c9d987742	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+4eea7f36-94f2-4063-bde7-6bcf3597a368	storage-general-purpose-page-blob-access	LRS	放置页 Blob、创建容器操作（按 10,000 计）	default
+574b4779-7c85-4019-96b2-6df26fb7c95f	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+3f5a1f85-0a6f-40f3-b81f-8f440c1300d8	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+ff3dfc50-7070-4c1c-a20c-143bd277aa99	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+8fde27a4-f37c-4af2-ab00-f53eac8f1925	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+9670348a-c726-4402-b54b-f931ffb56b1e	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+47146c02-c177-4c1b-afd5-06780c8472e6				
+40551b4c-e8be-48ed-b70b-f8d25c7de724	storage-general-purpose-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）	default
+0ff80052-eeaf-49d1-aa95-f2f6b0eb8ce2	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+7d3c4429-526d-42f9-a77c-f1c683815113	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+b1d1445b-213f-499a-bb19-070a2d50248a	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+0c622ef2-cd52-4909-b2b2-3f6e8f940cc2	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+0df63342-0a5d-4d17-a618-141acf35b84b	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+d661e656-93ca-48c3-87ac-5c57d5a336d9	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+357c606e-1868-4f8c-9ebb-42c164290fa8	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+bf20e6b9-2040-493c-aaf3-a61ceb7de3b9	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+623ece87-17fd-488b-a642-b70be13c26ba	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+03629172-8caf-40cf-847b-93b12f93b5f7	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+1b174502-a775-4055-b885-49631396b81a	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+6196d4b3-8056-4d9c-bf78-3793461a8fbb	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+11278850-f161-4a6e-86ef-d650a29fb62f	storage-general-purpose-page-blob-access	GRS	放置页 Blob、创建容器操作（按 10,000 计）	default
+d1e40041-22fd-4815-86e2-f067dace7a59				
+3e3585a6-bb6d-401f-b9bf-973ca29607ac	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+8b6d2696-456c-41e1-a09e-73efeb109a63	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+9b25ee17-78ef-44dc-9d0e-43ee6f3ca17c	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+1fb98075-ab1b-4aaf-a70f-030c435f2cef	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+c9711c6c-2fb5-4ff1-ad23-17e9beab62ba	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+ae184e1f-aa21-4387-a46f-3d1cce8dad57	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+b1e41f68-4bfb-4a85-8e55-bb509aa07791	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+db38ea22-8395-4dbd-96af-4ea6d0330128	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+9299c6aa-2ffd-4c43-8651-d8fdc7b605e5	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+37951661-14a9-4902-b792-fe93c06db5f5	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+d00976a4-627e-4d90-aac4-c3a48a545baa	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+4c821f32-3dfc-4d0d-8993-9d29213cfa0a	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+1577ac87-b6cd-4bea-bb3d-39533bb66101	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+10f9c657-5ede-47f6-a8e5-337a4a7d7b1e	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+9cb0bde8-bc0d-468c-8423-a25fe06779d3	storage-general-purpose-table-access	LRS	放置表、创建容器操作（按 10,000 计）	default
+456a33ee-39d0-4bea-adbc-707440398e67				
+ed45ae8d-a734-4d21-bc88-e5b54f9e903e	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+96c50999-57d3-47e2-b28b-63d758f84d22	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+b5135f0a-166d-48f7-8474-80e3b0b619fd	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+1ff8223e-a66e-4d66-9a57-f6c5b84c8828	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+f90f81d2-238a-49d0-9f1b-9df13a859843	storage-general-purpose-file-access	LRS	放置文件、创建容器操作（按 10,000 计）	default
+11f46405-b184-4c05-a057-c9a9393b475e	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+1ae54f83-7a36-4104-8c29-f4054900a96e	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+b2048190-2afb-43a5-b5f4-af7a885396c1	storage-general-purpose-file-access	GRS	放置文件、创建容器操作（按 10,000 计）	default
+5e946cfc-acc9-4a96-895b-92386fa63c9c	storage-general-purpose-queues-access	LRS	队列操作（按 10,000 计）	default
+e56de096-6d48-48c1-becc-5b43cd9f1a14	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+ea8e044b-900e-4137-b26f-7e41eecef1b6	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+00c7e75c-8710-4941-a917-449cfabd79ea	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+f2b896ed-0fb5-48a5-a687-70c2f63e137b	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+a5ae1d7c-12ed-495a-82b5-5eef7d45c442	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+bf20ce29-80d6-4b39-8966-187bd0519f21	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+7b5c8556-24e2-42bc-8f46-da45ac53aee4	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+244c1fb7-cbe9-49d9-8c4b-3c1fe31ec2a9	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+d18c8c36-0471-44d2-bc16-c3ea3ccedc60	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+6417d428-fe3b-4270-951d-5a67e6411a8f	storage-general-purpose-page-blob-access	LRS	列出容器操作（按 10,000 计）	default
+d1c3128a-d1e4-423e-a917-394b7294f435	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+893280e7-0a64-4535-922b-82b0a0da5ea0	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+d3084fe4-630d-43a2-94e8-56f0178628f9				
+003afa77-88c3-4da1-9464-69f643721f8b	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+e81fb376-3130-4866-a237-6bcd68e905d9	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+77abbc7b-ab09-463d-b97a-fa10bdbe4f80	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+bb20dfda-6d18-4bb1-b7fc-86a05d9cfb8d	storage-general-purpose-table-access	GRS	批处理放置表、创建容器操作 （按 10,000 计）	default
+be244c54-8aae-4fd4-a5d1-0dbda93f2772	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+07135832-4a64-40b6-a093-30af0d2b6f54	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+b9fd285b-fa40-4954-ab77-56b6a1c4eeea	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+e2613a8a-62a3-4bb2-9558-c51db8294b0f	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+0ef7d1ea-e461-4881-9b57-c6e29384d711	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+65dda5ab-c6a3-4e8d-8dad-1bdd67947927	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+ca2d160f-694a-4ff4-bb15-bffaad99af9e	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+6446f0b9-46ca-445b-8ee6-a1f925bccb5e	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+a5965539-c524-4112-b4c5-091680938b3d	storage-general-purpose-page-blob-access	GRS	放置页 Blob、创建容器操作（按 10,000 计）	default
+830aab6c-b809-4ce2-8556-2adc72b0ddd5	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+5f77822d-d647-45ca-b985-2186b0810c89	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+761abab8-259d-4206-a6ae-707ed03fc540	storage-general-purpose-file-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）	default
+2f444a5e-f3eb-46c7-bab0-cd54bd6f5563	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+ad22fac8-9da5-4577-8683-56ae94d39e42	storage-general-purpose-table-access	GRS	放置表、创建容器操作（按 10,000 计）	default
+49369c7a-bf7b-4ad6-978b-952fc99b54a7	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+12da282f-7e96-49e2-983a-9a65da2a4866	storage-general-purpose-table-access	LRS	表读取操作（按 10,000 计）	default
+e869673a-1901-4af5-8788-58b668f7a8b6	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+acc81779-f782-4e9b-b837-90e9538a091d	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+6b3b540c-c0b2-4d98-9abc-aa26087f38e9	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+46b7049d-2f0a-4153-96b9-78fea3f83029	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+2ef71e5b-5da5-4a4d-b492-5277f79b30ea	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+55d6913c-a5af-4e8c-8e9a-855c536f5166	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+73292260-ef3f-4583-8fef-199625b783ae	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+5b1f1e2d-5c19-43ea-bbfb-d5378301858e	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+d793e346-94f3-4e3b-ae43-666913a4b7da	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+3d7aa86c-0e9d-4139-b59f-cc5bad92b873	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+46c02a5f-778a-4feb-85bf-de4148636090				
+f8c187bb-5a47-46ae-b874-f186d207fff4	storage-general-purpose-block-blob-access	LRS	列出容器操作（按 10,000 计）	default
+a6123fe9-eef6-40b3-907b-ea1ba52684cb	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+d513de91-7c61-4933-9af0-616ac638a464	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+c80a3636-2edb-4248-bcb1-04ef818a75ac	storage-general-purpose-page-blob-access	LRS	放置页 Blob、创建容器操作（按 10,000 计）	default
+5b50a2ef-bad3-4614-b502-17465754854a	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+bf5b0de6-a5f1-45d6-aaab-d4f0b74dfe77	storage-general-purpose-page-blob-access	LRS	列出容器操作（按 10,000 计）	default
+9eef0166-d2d6-4dd8-ae46-df8691b63b64	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+a4d4f647-f54e-400b-a11a-dcf256afa091	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+7873a418-1c76-45ac-a8b0-7f33f2816650	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+88300ab6-0e31-45bd-af34-50fd487cb801	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+179ac5fc-99bb-454f-a1f7-80eaf7259a84	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+a46b01ea-f43f-4c41-af8c-e8b0a81d05c6	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+964c283a-83a3-4dd4-8baf-59511998fe8b	storage-general-purpose-page-blob-access	LRS	放置页 Blob、创建容器操作（按 10,000 计）	default
+39cbf8ac-08cb-4b39-9cfe-50ed2374c8d9	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+242ead45-9acf-4745-992e-6c7bc804a5e8	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+45ff39f6-c7a6-40fb-a124-cf5b280ba092	storage-general-purpose-block-blob-access	GRS	放置块 Blob、创建容器操作（按 10,000 计）	default
+92b9e427-1ca5-4464-9dc6-85dbb7ac7e86	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+8778022c-ce89-4ebf-8f3a-646bff3faf28	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+a12520d4-4bdb-4561-9e8a-a5d9fda5b5c7	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+65a00353-376c-49f9-920c-f36712acb3c5	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+6514601e-b368-455c-830a-4188486815ed	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+8303edd8-7a66-4bc6-aef2-89f46925316c				
+b6207704-0157-45cb-a101-e4ce9dc22442	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+7a772e60-7449-4b3b-ba34-db60e8316a0e	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+bedf6c71-d8d8-4564-a569-4f68fdfc5477	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+fa3849ff-c59b-4098-83ce-19d2b7951cbe	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+7056fbc8-1b29-4036-bf00-17a2c7d20e57	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+e1517b3a-f462-4937-87b7-2ee7f7cc143b	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+68c289e1-85e6-462a-bd59-aa359fe314f8	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+56f9819f-fbf1-4ac4-9e0b-f0bb253f47d7	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+caa454d7-e42f-47c4-9e28-773bf7b739fb	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+2c23b2c1-8094-4a07-a7d2-39ad6204e792	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+abf7d235-6045-4f02-802a-acbad7418578	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+6e2db562-b8ed-498c-aec2-eab722bb0b24	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+99ce0a26-4339-426b-9f80-10d697f0f191	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+2a87c94a-471c-46e5-931a-f7310f143322	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+47c3ea37-8f9e-4d0f-a3e4-c1351de4408b	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(冷)	default
+d28bad6f-033b-429c-81cc-a6d9324a70eb	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+108a63a0-143f-4aea-b1a0-6a931d5d8bb9	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+728f3206-5e3c-4f02-ba31-669d04054659	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+4d10df20-7dd5-4f8a-8ff9-2bb0a2b252fc	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+87594d41-d07d-4257-be17-d4d2ee0d0132	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+63710d1d-64bf-48ed-aa9f-ac07c7f6c6f6	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+c30490b2-3656-408a-8dbc-234d5de91597	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+c4624541-6316-4fa3-8569-d8ba09eb61c3				
+912f9c7b-beec-42fb-a1f4-36f029343488	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+c2b9b3e7-a1a2-4b8b-8f38-81a50ce18821	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+4e435593-08e3-4159-9c2f-374618fd11f0	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+251ae557-c741-45e1-a91d-10d98f925083	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+14854f12-8d37-4299-842a-b0f2df82a305	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+2d4d409d-9821-4057-b8b4-12499b3eec7f	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+9a56b4f4-1d78-416e-a19b-815490ad7910	storage-general-purpose-table-access	LRS	扫描容器操作 （按 10,000 计）	default
+6d8e5801-3e49-446f-958f-5c79bc1416ff	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+743df7ce-2318-440e-879c-fd0215669eaa	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	异地复制数据传输 (冷)	default
+923978e1-fd3f-4bd5-a798-f4b533057e46				
+4d541c73-822f-4eaf-9efc-22d17bda133b	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+b9e5e77c-a0b3-4a2c-9b8b-57fa54f31c52				
+0dcc858f-58fc-43b6-8b3c-b2efc9be0356	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+02e9eadc-810a-4abe-9ebb-b3e80009752f	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+5bedbb8d-336a-4df8-b152-f49a92f0ce67	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+7790e1b7-6fea-4ec3-8303-dffe9dad8579	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+66ce8e33-adda-4e04-a0cb-0f1ce31849b6	storage-general-purpose-table-access	LRS	列出容器操作（按 10,000 计）	default
+ba501f8b-0892-4e26-9abe-1f3d6e1bbe2f	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+15adff7b-0dab-4c00-889d-caa6d4fb31bb	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+4eea396d-b680-47c7-a1f5-3d9f5cd4d998	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+fb7392a3-f693-4e3c-9de0-01ba98ddb948	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+b939c7c4-6cd5-4c4b-95a9-ebb04712363c	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+34013683-6f3f-4b90-b235-aa579b1f2881	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+47df7bbe-4be6-4409-bab9-2ddf50fc690c				
+452de456-2197-463a-b434-8d8b3cf77670	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+1a2bbbcf-4313-43fb-95c7-11d95b45cd24	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+978ec393-2954-41ad-bd64-1aec2566b910	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+41ec770f-e876-49a0-93c3-36e40a3dd5ee	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+e80b9379-508f-4856-851a-45851532059a	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+fdff7af4-ec1b-4a52-b993-8753bfe93fbf	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+be8151b8-d40e-4fa5-a2a9-73a93daacdc9	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+7b758715-7f61-48d9-9fe0-1e31c9246dd6	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+33c6746a-bb9f-4e4e-8bc2-5d9f3a56c2e5	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+b7b29876-292f-45c6-89bd-8aba2cc7a49c	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+633164c3-12c3-45a0-9444-529b57290c2f	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+211e620c-ebcf-4db5-a7fd-996abebe9546	storage-general-purpose-block-blob-access	LRS	放置块 Blob、创建容器操作（按 10,000 计）	default
+f31037d2-678a-4472-9f84-d084817f69f4	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+0a1aabbe-5b75-4b5f-8e78-546f81ecbe02	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+854ead60-2964-42d7-ba40-03248e21fcb8				
+39bb4c69-c2a8-401d-93a3-d84820c64d1b	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+95250052-9980-4739-951e-60acbad79507	storage-cold-hot-block-blob-access	LRS	数据检索 (冷)	default
+6a6a7719-7350-4178-8f96-e1033895b6a5	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+9f1d9ff8-fff6-428d-9762-22d61aaa4bce				
+2e60d458-756e-41a6-8747-8b3f7eff2c62	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+6a99015c-d33f-4f46-ae59-2e4d14091aa8	storage-general-purpose-file-access	LRS	文件协议操作 （按 10,000 计）	default
+c01a1eed-b19a-4aad-bb83-8d62cdc29778	storage-general-purpose-page-blob-access	LRS	放置页 Blob、创建容器操作（按 10,000 计）	default
+5aa1a995-b25f-43f7-8b28-3d6fc75676b3	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+a8e5826f-0b33-4241-8ceb-6e94e10994bf	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+393acad9-6da4-49ff-a058-d50135665a35	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(冷)	default
+8dc92ab8-91b0-407c-a5cd-f484e3653db7	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+085f851d-315a-484b-b960-00a177f25c8e	storage-cold-hot-block-blob-access	LRS	数据写入 (冷)	default
+5f509d8f-2760-4227-9c64-3a91ee145420	storage-cold-hot-block-blob-access	LRS	除删除（此操作免费）之外的其他操作（按 10,000 计）(热)	default
+2027a817-1028-4985-b30e-1f3a04930416	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
+40aeba39-7196-4aab-aaa2-343f077fdb56	storage-cold-hot-block-blob-access	GRS 和 RA-GRS	数据写入 (冷)	default
+21b293cd-60dc-418f-9b98-2b452ed0de09	storage-cold-hot-block-blob-access	LRS	放置 Blob/块、列出并创建容器操作（按 10,000 计）(热)	default
