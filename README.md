@@ -50,6 +50,7 @@ CICD (Continuous Integration Continuous Deliver) Tool is a quick and simple tool
   
 * Client Environment
   * Windows PowerShell 3.0+
+  * Internet Connectivity to refernece environment and target environment.
   
 ###CICD Tool
 
@@ -57,20 +58,17 @@ CICD (Continuous Integration Continuous Deliver) Tool is a quick and simple tool
   * Microsoft Azure
   * Microsoft Azure in China
   * Microsoft Azure in Germany
-  * Microsoft Azure in US Government
 
 * Client Environment
   * Windows PowerShell 3.0+
-  * AzureRm.Profile 1.7.0+
-  * AzureRm.Compute 1.7.0+
-  * AzureRm.Network 1.7.0+
-  * AzureRm.Storage 1.7.0+
+  * Latest Azure PowerShell Recommended
+  * Internet Connectivity to source environment and destination environment.
 
 ## Installation
 
 ###MSI Installer
 
-1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.0.1/AzureGlobalConnectionToolkit.msi) .
+1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.1.0/AzureGlobalConnectionToolkit.0.1.0.msi) .
 2. Run and Install.
 
 You can also find all the previous releases in [Azure Global Connection Toolkit Release](https://github.com/Azure/AzureGlobalConnectionToolkit/releases)
@@ -115,6 +113,8 @@ After executing the cmdlet, it will follow the steps to perform VM migration:
 6. Select the VM destination location.
 7. Confirm the VM Migration.
 8. Start the VM Migration.
+
+If you want to discover more or customize the script, please visit [CICD Tool](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool)
 
 ## More Guidance
 

@@ -1,5 +1,3 @@
-﻿Function Check-AzureRmMigrationPSRequirement
-{
   $moduleList = Get-Module -ListAvailable
 
   $AzureRmStorage = $moduleList | Where-Object { $_.Name -eq "AzureRm.Storage" }
@@ -25,5 +23,3 @@
   Check-AzurePSModule -module $AzureRmCompute
   Check-AzurePSModule -module $AzureRMNetwork
   Check-AzurePSModule -module $AzureRMProfile
-
-}
