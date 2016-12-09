@@ -23,6 +23,7 @@ After
 planning and validation have been completed, user needs to investigate how to
 migrate/clone their current workloads to the new environment. The complexity of
 technologies blocks user from performing a migration in short period of time.
+
 In order to help users in each step, Azure Global Connection Toolkit offers two components:
 
 - **Assessment Tool**:
@@ -53,7 +54,7 @@ customized or integrated into your existing DevOps process.
 
 ###Assessment Tool
 
-* Support the assessment from Global Azure to China Azure.or Azure Germany
+* Support the assessment from Global Azure to China Azure or Azure Germany.
 * Support the assessment for entire subscription.
 * Support the service parity check.
 * Support limited item for cost estimation.
