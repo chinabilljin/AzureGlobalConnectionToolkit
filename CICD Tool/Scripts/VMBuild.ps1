@@ -217,6 +217,7 @@
   ForEach ( $resource in $vmResources )
   {
     $name = ("_" + $resource.Name + "_").Replace("-","_")
+    $rg = $resource.ResourceGroupName
   
     switch ($resource.ResouceType)
     {
