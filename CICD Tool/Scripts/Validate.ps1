@@ -3,6 +3,10 @@
     [PSObject] 
     $vm,
 
+    [Parameter(Mandatory=$False)]
+    [PSObject] 
+    $RenameInfos,
+
     [Parameter(Mandatory=$True)]
     [String] $targetLocation,
 
@@ -17,7 +21,7 @@
   )
 
   ##Parameter Type Check
-  if ( $vm -ne $null )
+  if ( $vm -ne $null)
   {
     if ( $vm.GetType().FullName -ne "Microsoft.Azure.Commands.Compute.Models.PSVirtualMachine" )
     {
@@ -67,9 +71,9 @@
     )
     
     $resource = New-Object ResourceProfile
-    $resource.SourceName = $resourceId.Split("/")[8]
+    $resource.DestinationName = $resourceId.Split("/")[8]
     $resource.ResourceType = $resourceId.Split("/")[7]
-    $resource.SourceResourceGroup = $resourceId.Split("/")[4]
+    $resource.DestinationResourceGroup = $resourceId.Split("/")[4]
    
     $resourceCheck = $vmResources | Where-Object { $_ -eq $resource }
    
@@ -93,109 +97,114 @@
       $targetStor = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storName }
       
       $resource = New-Object ResourceProfile
-      $resource.SourceName = $targetStor.StorageAccountName
+      $resource.DestinationName = $targetStor.StorageAccountName
       $resource.ResourceType = "storageAccounts"
-      $resource.SourceResourceGroup = $targetStor.ResourceGroupName
+      $resource.DestinationResourceGroup = $targetStor.ResourceGroupName
 
       $Script:vmResources += $resource
     }
   }
 
   ####Get VM Components####
-  Set-AzureRmContext -Context $SrcContext | Out-Null
-
-  #VM
-  $Script:vmResources = @()
-
-  Add-ResourceList -resourceId $vm.Id
-
-  #AS
-  if ($vm.AvailabilitySetReference -ne $null)
+  if($RenameInfos)
   {
-    Add-ResourceList -resourceId $vm.AvailabilitySetReference.Id
+    $vmResources = $RenameInfos
   }
+  else
+  {
+      Set-AzureRmContext -Context $SrcContext | Out-Null
+
+      #VM
+      $Script:vmResources = @()
+
+      Add-ResourceList -resourceId $vm.Id
+
+      #AS
+      if ($vm.AvailabilitySetReference -ne $null)
+      {
+        Add-ResourceList -resourceId $vm.AvailabilitySetReference.Id
+      }
    
 
-  #NIC
-  if ($vm.NetworkInterfaceIDs -ne $null)
-  { 
-    foreach ( $nicId in $vm.NetworkInterfaceIDs )
-    {
-      Add-ResourceList -resourceId $nicId
+      #NIC
+      if ($vm.NetworkInterfaceIDs -ne $null)
+      { 
+        foreach ( $nicId in $vm.NetworkInterfaceIDs )
+        {
+          Add-ResourceList -resourceId $nicId
             
-      $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId }
+          $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId }
      
-      foreach ( $ipConfig in $nic.IpConfigurations )
-      {
-         #LB
-         foreach( $lbp in $ipConfig.LoadBalancerBackendAddressPools)
-         {   
-            Add-ResourceList -resourceId $lbp.Id
+          foreach ( $ipConfig in $nic.IpConfigurations )
+          {
+             #LB
+             foreach( $lbp in $ipConfig.LoadBalancerBackendAddressPools)
+             {   
+                Add-ResourceList -resourceId $lbp.Id
             
-            #PIP-LB
-            $lb = Get-AzureRmLoadBalancer -Name $lbp.Id.Split("/")[8] -ResourceGroupName $lbp.Id.Split("/")[4]
+                #PIP-LB
+                $lb = Get-AzureRmLoadBalancer -Name $lbp.Id.Split("/")[8] -ResourceGroupName $lbp.Id.Split("/")[4]
                                   
-            foreach ( $fip in $lb.FrontendIpConfigurations )
-            {
-               Add-ResourceList -resourceId $fip.PublicIpAddress.Id
-            }  
-         }
+                foreach ( $fip in $lb.FrontendIpConfigurations )
+                {
+                   Add-ResourceList -resourceId $fip.PublicIpAddress.Id
+                }  
+             }
 
-         #VN
+             #VN
          
-         Add-ResourceList -resourceId $ipConfig.Subnet.Id
+             Add-ResourceList -resourceId $ipConfig.Subnet.Id
 
-         #NSG-VN
-         $vn = Get-AzureRmVirtualNetwork -Name $ipConfig.Subnet.Id.Split("/")[8] -ResourceGroupName $ipConfig.Subnet.Id.Split("/")[4]
+             #NSG-VN
+             $vn = Get-AzureRmVirtualNetwork -Name $ipConfig.Subnet.Id.Split("/")[8] -ResourceGroupName $ipConfig.Subnet.Id.Split("/")[4]
             
-         foreach ( $subnet in $vn.Subnets)
-         {
-            if ( $subnet.NetworkSecurityGroup -ne $null)
-            {
-              Add-ResourceList -resourceId $subnet.NetworkSecurityGroup.Id                
-            }
-         }
+             foreach ( $subnet in $vn.Subnets)
+             {
+                if ( $subnet.NetworkSecurityGroup -ne $null)
+                {
+                  Add-ResourceList -resourceId $subnet.NetworkSecurityGroup.Id                
+                }
+             }
          
 
-         #PIP-nic
-         if ($ipConfig.PublicIpAddress -ne $null)
-         {
-           Add-ResourceList -resourceId $ipConfig.PublicIpAddress.Id
-         }
-      }
+             #PIP-nic
+             if ($ipConfig.PublicIpAddress -ne $null)
+             {
+               Add-ResourceList -resourceId $ipConfig.PublicIpAddress.Id
+             }
+          }
      
-      #NSG-nic
-      if ($nic.NetworkSecurityGroup -ne $null)
-      {
-         Add-ResourceList -resourceId $nic.NetworkSecurityGroup.Id
+          #NSG-nic
+          if ($nic.NetworkSecurityGroup -ne $null)
+          {
+             Add-ResourceList -resourceId $nic.NetworkSecurityGroup.Id
+          }
+
+        }
       }
 
-    }
+      #OSDisk
+      $osuri = $vm.StorageProfile.OsDisk.Vhd.Uri
+      if ( $osuri -match "https" ) {
+      $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)}
+      else {
+        $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
+      }
+      Add-StorageList -storName $osstorname
+
+
+      #DataDisk
+      foreach($dataDisk in $vm.StorageProfile.DataDisks)
+      {
+        $datauri = $dataDisk.Vhd.Uri
+        if ( $datauri -match "https" ) {
+        $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
+        else {
+          $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
+        }
+        Add-StorageList -storName $datastorname
+      } 
   }
-
-  #OSDisk
-  $osuri = $vm.StorageProfile.OsDisk.Vhd.Uri
-  if ( $osuri -match "https" ) {
-  $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)}
-  else {
-    $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
-  }
-  Add-StorageList -storName $osstorname
-
-
-  #DataDisk
-  foreach($dataDisk in $vm.StorageProfile.DataDisks)
-  {
-    $datauri = $dataDisk.Vhd.Uri
-    if ( $datauri -match "https" ) {
-    $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
-    else {
-      $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
-    }
-    Add-StorageList -storName $datastorname
-  } 
-
-
   ####Start Validation####
 
 
@@ -337,10 +346,10 @@
   {
     if($resource.ResourceType -eq "storageAccounts")
     {
-       $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.SourceName }
+       $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.DestinationName }
        if ( $saCheck -eq $null )
        {
-           $storageAccountNames += $resource.SourceName
+           $storageAccountNames += $resource.DestinationName
        }
     }
   }
@@ -371,7 +380,7 @@
   {
     if($resource.ResourceType -eq "publicIPAddresses"){
         Set-AzureRmContext -Context $SrcContext | Out-Null
-        $sourcePublicAddress = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
+        $sourcePublicAddress = Get-AzureRmPublicIpAddress -Name $resource.DestinationName -ResourceGroupName $resource.DestinationResourceGroup
         Set-AzureRmContext -Context $DestContext | Out-Null
         if($sourcePublicAddress.DnsSettings.DomainNameLabel -ne $null)
         {
@@ -393,8 +402,8 @@
   foreach ( $resource in $vmResources)
   {
     $resourceCheck = $DestResources | Where-Object {$_.ResourceType -match $resource.ResourceType } | 
-                                      Where-Object {$_.ResourceId.Split("/")[4] -eq $resource.SourceResourceGroup} | 
-                                      Where-Object {$_.Name -eq $resource.SourceName}
+                                      Where-Object {$_.ResourceId.Split("/")[4] -eq $resource.DestinationResourceGroup} | 
+                                      Where-Object {$_.Name -eq $resource.DestinationName}
     if ($resourceCheck -ne $null)
     {
         switch ($resource.ResourceType) 
@@ -408,7 +417,7 @@
             "networkSecurityGroups" {$resourceResult = "SucceedWithWarning"}
             "storageAccounts" {$resourceResult = "SucceedWithWarning"}
         }
-        Add-ResultList -result $resourceResult -detail ("The resource:" + $resource.SourceName +  " (type: "+$resource.ResourceType+") in Resource Group: " + $resource.SourceResourceGroup + " already exists in destination.")
+        Add-ResultList -result $resourceResult -detail ("The resource:" + $resource.DestinationName +  " (type: "+$resource.ResourceType+") in Resource Group: " + $resource.DestinationResourceGroup + " already exists in destination.")
     }
     
 
