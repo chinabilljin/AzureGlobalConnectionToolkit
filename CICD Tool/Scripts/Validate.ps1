@@ -4,6 +4,7 @@
     $vm,
 
     [Parameter(Mandatory=$False)]
+    [AllowNull()]
     [PSObject] 
     $RenameInfos,
 
@@ -44,9 +45,17 @@
       Throw "-DestContext : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Profile.Models.PSAzureContext"
     }
   }
-
-  ##PS Module Check
-  Check-AzureRmMigrationPSRequirement
+  
+  if ($RenameInfos.Count -ne 0)
+  {
+    ForEach( $RenameInfo in $RenameInfos )
+    {
+      if ( $RenameInfo.GetType().FullName -ne "ResourceProfile" )
+      {
+        Throw "`-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile"
+      }
+    }
+  }
 
   ####Write Progress####
 

@@ -14,6 +14,7 @@
   $DestContext,  
 
   [Parameter(Mandatory=$false)]
+  [AllowNull()]
   [Object[]]
   $RenameInfos
 
@@ -56,10 +57,6 @@ if ($RenameInfos.Count -ne 0)
     }
   }
 }
-
-##PS Module Check
-Check-AzureRmMigrationPSRequirement
-
 
 ####Write Progress####
 
@@ -219,7 +216,7 @@ else
   {
     Param(
       [Parameter(Mandatory=$True)]
-      [ResourceProfile] $renameInfo
+      [PSObject] $renameInfo
     )
 
     $rgCheck = $resourceGroups | Where-Object { $_.ResourceGroupName -eq $renameInfo.DestinationResourceGroup }
@@ -240,7 +237,7 @@ else
   {
     Param(
       [Parameter(Mandatory=$True)]
-      [ResourceProfile] $renameInfo  
+      [PSObject] $renameInfo  
     )
 
     $storCheck = $storageAccounts | Where-Object { $_.StorageAccountName -eq $renameInfo.DestinationName }

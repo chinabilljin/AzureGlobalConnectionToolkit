@@ -20,6 +20,7 @@
   $DestContext,
   
   [Parameter(Mandatory=$false)]
+  [AllowNull()]
   [Object[]]
   $RenameInfos  
 

@@ -1,8 +1,8 @@
 Param(
-  [Parameter(Mandatory=$True)]
+  [Parameter(Mandatory=$true)]
   [PSObject] $vm,
 
-  [Parameter(Mandatory=$True)]
+  [Parameter(Mandatory=$true)]
   [String] $targetLocation,
 
   [Parameter(Mandatory=$true)]
@@ -14,6 +14,7 @@ Param(
   $DestContext,
   
   [Parameter(Mandatory=$false)]
+  [AllowNull()]
   [Object[]]
   $RenameInfos  
 
@@ -159,7 +160,7 @@ if ( $RenameInfos.Count -ne 0 )
   ForEach ( $stor in $StorageInfos )
   {
     $renameInfo = $RenameInfos | Where-Object { ( $_.SourceName -eq $stor.SrcAccountName ) -and ( $_.ResourceType -eq "storageAccounts" ) }
-    if ( ($renameInfo -ne $null) -and ($renameInfo.SourceName -ne $renameInfo.Destinationname) )
+    if ( ($renameInfo -ne $null) )
     {
       $stor.DestAccountName = $renameInfo.Destinationname
     }
