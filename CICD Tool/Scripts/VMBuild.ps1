@@ -345,9 +345,9 @@ Class ResourceMember
 $progressPercentage = 40
 
 #VM Deploy by Phase
-For($i = 1; $i -le 5 ; $i++ )
+For($k = 1; $k -le 5 ; $k++ )
 {
-  $currentPhase = "Phase" + $i
+  $currentPhase = "Phase" + $k
 
   Foreach ( $rg in $destinationResourceGroups ) {
     
@@ -364,7 +364,7 @@ For($i = 1; $i -le 5 ; $i++ )
       
       $targettemplate.resources = $destResourceList.$destRg.Phase1
 
-      for ( $j = 2; $j -le $i; $j ++ )
+      for ( $j = 2; $j -le $k; $j ++ )
       {
         $addPhase = "Phase" + $j
         $targettemplate.resources += $destResourceList.$destRg.$addPhase
