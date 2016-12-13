@@ -78,6 +78,7 @@ Class ResourceProfile
 
 
 ##Get the coponents and resource groups
+Set-AzureRmContext -Context $SrcContext | Out-Null
 $Script:sourceResourceGroups = @()
 $Script:destinationResourceGroups = @()
 $Script:vmResources = @()
@@ -118,8 +119,6 @@ if ( $RenameInfos.Count -eq 0)
   Write-Progress -id 30 -ParentId 0 -activity "Building VM" -status "Getting VM Components" -percentComplete 10
 
   ##Handle Resource Group Dependencies: List Distinct Resource Group
-
-  Set-AzureRmContext -Context $SrcContext | Out-Null
   #VM
   $Script:resourceGroups = @()
 
@@ -196,8 +195,8 @@ else
 {
   Foreach ( $renameInfo in $RenameInfos)
   {
-    $Script:sourceResourceGroups += $RenameInfo.SourceResourceGroup
-    $Script:destinationResourceGroups += $RenameInfo.DestinationResourceGroup
+    $Script:sourceResourceGroups += $RenameInfo.SourceResourceGroup.ToLower()
+    $Script:destinationResourceGroups += $RenameInfo.DestinationResourceGroup.ToLower()
 
     if ( $renameInfo.ResourceType -ne "storageAccounts" )
     {
@@ -269,6 +268,11 @@ ForEach ( $resource in $vmResources )
     if ($resource.ResourceType -eq 'virtualMachines')
     {
       $c = $SrcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match "Microsoft.Compute/virtualMachines") }
+
+      if ($c -eq $null)
+      {
+        Throw ("Cannot find the virtual machine " + $resource.SourceName + " in source subscription.")
+      }
 
       $crspropstorprofile = New-Object PSObject
       $crspropstorprofile | Add-Member -Name "osDisk" -MemberType NoteProperty -Value ($c.properties.storageProfile.osdisk | Select-Object -Property * -ExcludeProperty image)
