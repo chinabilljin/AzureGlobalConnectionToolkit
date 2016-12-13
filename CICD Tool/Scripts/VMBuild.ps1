@@ -515,6 +515,11 @@ For($i = 1; $i -le 5 ; $i++ )
 
   $progressPercentage += 10
 
+  if ($progressPercentage -ge 90)
+  {
+    $progressPercentage = 90
+  }
+
   Write-Progress -id 30 -ParentId 0 -activity "Building VM" -status "Deploying VM" -percentComplete $progressPercentage
 }
 
