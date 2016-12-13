@@ -204,10 +204,13 @@
         $responses+= $selection
       }
 
+      $objForm.Dispose()
+
     }
 
     if ($responses.Count -eq 0)
     {
+      $objForm.Dispose()
       Break
     }
 

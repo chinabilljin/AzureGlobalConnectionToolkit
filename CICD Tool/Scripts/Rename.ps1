@@ -292,9 +292,11 @@ if ( $objForm.DialogResult -eq "OK" ) {
     $renameInfos += $renameInfo
   }
 
+  $objForm.Dispose()
 }
 else
 {
+  $objForm.Dispose()
   Break
 }
 
