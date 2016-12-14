@@ -106,7 +106,7 @@ if ( $RenameInfos.Count -eq 0)
     $resource.SourceResourceGroup = $resourceId.Split("/")[4]
     $resource.DestinationResourceGroup = $resourceId.Split("/")[4]
    
-    $resourceCheck = $vmResources | Where-Object { $_ -eq $resource }
+    $resourceCheck = $vmResources | Where-Object { ($_.SourceName -eq $resource.SourceName) -and ($_.ResourceType -eq $resource.ResourceType) -and ($_.SourceResourceGroup -eq $resource.SourceResourceGroup) }
    
     if ( $resourceCheck -eq $null )
     {
@@ -212,7 +212,7 @@ else
 $SrcResourceList = New-Object PSObject
 $DestResourceList = New-Object PSObject
 
-$sourceParameters = @()
+$sourceParameters = New-Object PSObject
 
 $tempId = [guid]::NewGuid()
 
@@ -225,7 +225,15 @@ Foreach ( $rg in $sourceResourceGroups )
   Export-AzureRmResourceGroup -ResourceGroupName $rg -Path $Sourcetemplatepath -IncludeParameterDefaultValue -Force -WarningAction Ignore | Out-Null
 
   $sourceTemplate = Get-Content -raw -Path $Sourcetemplatepath | ConvertFrom-Json
-  $sourceParameters += $sourceTemplate.parameters
+
+  $paraMembers = $sourceTemplate.parameters | Get-Member -MemberType NoteProperty
+  
+  foreach ( $pm in $paraMembers )
+  {
+    $pmName = $pm.Name
+
+    $sourceParameters | Add-Member -Name $pmName -MemberType NoteProperty -Value $sourceTemplate.parameters.$pmName
+  }
 
   $SrcResourceList | Add-Member -Name $rg -MemberType NoteProperty -Value $sourcetemplate
 }
@@ -362,12 +370,12 @@ For($k = 1; $k -le 5 ; $k++ )
       $targettemplate | Add-Member -Name "resources" -MemberType Noteproperty -Value $null
 
       
-      $targettemplate.resources = $destResourceList.$destRg.Phase1
+      $targettemplate.resources = $destResourceList.$rg.Phase1
 
       for ( $j = 2; $j -le $k; $j ++ )
       {
         $addPhase = "Phase" + $j
-        $targettemplate.resources += $destResourceList.$destRg.$addPhase
+        $targettemplate.resources += $destResourceList.$rg.$addPhase
       }
       
       #Get the related parameters
@@ -390,6 +398,15 @@ For($k = 1; $k -le 5 ; $k++ )
           $resourceChecks += $resourceCheck 
         }
         
+        ForEach ( $dep in $resource.dependsOn )
+        {
+          if ($dep -match "parameters\('" )
+          {
+            $indexOfParameterBegin = $dep.IndexOf("parameters('")
+            $indexOfParameterEnd = $dep.IndexOf("')",$indexOfParameterBegin)
+            $parameterList += $dep.Substring($indexOfParameterBegin + 12 , $indexOfParameterEnd - $indexOfParameterBegin -12)
+          }
+        }
         
         While ( $resourceChecks.Count -ne 0 )
         {
@@ -491,7 +508,7 @@ For($k = 1; $k -le 5 ; $k++ )
             $targetResource = $vmResources | Where-Object { ($_.SourceName -eq $sourceName ) -and ( $_.DestinationResourceGroup -eq $rg ) -and ( $_.ResourceType -eq $tmname.Split("_")[0] ) }
           
             if ( $targetResource -ne $null )
-            { 
+            {         
               $targetparameters.$tmname.defaultValue = $targetresource.DestinationName
             }
             

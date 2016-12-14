@@ -84,7 +84,7 @@
     $resource.ResourceType = $resourceId.Split("/")[7]
     $resource.DestinationResourceGroup = $resourceId.Split("/")[4]
    
-    $resourceCheck = $vmResources | Where-Object { $_ -eq $resource }
+    $resourceCheck = $vmResources | Where-Object { ($_.SourceName -eq $resource.SourceName) -and ($_.ResourceType -eq $resource.ResourceType) -and ($_.SourceResourceGroup -eq $resource.SourceResourceGroup) }
    
     if ( $resourceCheck -eq $null )
     {

@@ -47,7 +47,7 @@ Function Add-ResourceList
    $resource.ResourceType = $resourceId.Split("/")[7]
    $resource.SourceResourceGroup = $resourceId.Split("/")[4]
    
-   $resourceCheck = $vmResources | Where-Object { $_ -eq $resource }
+   $resourceCheck = $vmResources | Where-Object { ($_.SourceName -eq $resource.SourceName) -and ($_.ResourceType -eq $resource.ResourceType) -and ($_.SourceResourceGroup -eq $resource.SourceResourceGroup) }
    
    if ( $resourceCheck -eq $null )
    {
@@ -273,7 +273,6 @@ $vmResources | ForEach { $objListbox.rows.Add( $_.ResourceType , $_.SourceResour
 $objForm.Controls.Add($objListbox) 
 
 $objForm.Add_Shown({$objForm.Activate()})
-
 
 [void] $objForm.ShowDialog()
 
