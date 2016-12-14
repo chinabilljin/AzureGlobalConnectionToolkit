@@ -309,12 +309,7 @@ ForEach ( $resource in $vmResources )
         $crsprop | Add-Member -Name "availabilitySet" -MemberType NoteProperty -Value $c.properties.availabilitySet
       }
 
-      $crsdeps = @()
-      Foreach ( $cdep in $c.dependsOn ) {
-        if ( $cdep -notmatch "Microsoft.Storage/storageAccounts" ) {
-          $crsdeps += $cdep
-        }
-      }
+      $crsDeps = @()
 
       $crs = New-Object PSObject
       $crs | Add-Member -Name "type" -MemberType NoteProperty -Value $c.type
@@ -323,7 +318,7 @@ ForEach ( $resource in $vmResources )
       $crs | Add-Member -Name "location" -MemberType NoteProperty -Value $targetLocation
       $crs | Add-Member -Name "tags" -MemberType NoteProperty -Value $c.tags
       $crs | Add-Member -Name "properties" -MemberType NoteProperty -Value $crsprop
-      $crs | Add-Member -Name "dependsOn" -MemberType NoteProperty -Value $crsdeps
+      $crs | Add-Member -Name "dependsOn" -MemberType NoteProperty -Value $crsDeps
 
       $destResourceList.$destRg.Phase5 += $crs
     }
@@ -331,6 +326,7 @@ ForEach ( $resource in $vmResources )
     {
       $targetresource = $srcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match $resource.ResourceType) }
       $targetresource.location = $targetLocation
+      $targetresource.dependsOn = @()
       $destResourceList.$destRg.$phase += $targetresource
     }  
   }
@@ -348,6 +344,8 @@ Class ResourceMember
 {
   [String] $Name
   [PSObject] $Parent
+  [Object[]] $Layers
+  [bool] $IsArray = $false
 }
 
 $progressPercentage = 40
@@ -370,13 +368,8 @@ For($k = 1; $k -le 5 ; $k++ )
       $targettemplate | Add-Member -Name "resources" -MemberType Noteproperty -Value $null
 
       
-      $targettemplate.resources = $destResourceList.$rg.Phase1
+      $targettemplate.resources = $destResourceList.$rg.$currentPhase
 
-      for ( $j = 2; $j -le $k; $j ++ )
-      {
-        $addPhase = "Phase" + $j
-        $targettemplate.resources += $destResourceList.$rg.$addPhase
-      }
       
       #Get the related parameters
       $parameterList = @()
@@ -394,28 +387,20 @@ For($k = 1; $k -le 5 ; $k++ )
           $resourceCheck = New-Object ResourceMember
           $resourceCheck.Name = $member.Name
           $resourceCheck.Parent = $resource.properties
+          $resourceCheck.Layers += $member.Name
           
           $resourceChecks += $resourceCheck 
         }
         
-        ForEach ( $dep in $resource.dependsOn )
-        {
-          if ($dep -match "parameters\('" )
-          {
-            $indexOfParameterBegin = $dep.IndexOf("parameters('")
-            $indexOfParameterEnd = $dep.IndexOf("')",$indexOfParameterBegin)
-            $parameterList += $dep.Substring($indexOfParameterBegin + 12 , $indexOfParameterEnd - $indexOfParameterBegin -12)
-          }
-        }
         
         While ( $resourceChecks.Count -ne 0 )
         {
           $newResourceMembers = @()
-          ForEach ( $resourceCheck in $resourceChecks )
+          ForEach ( $r in $resourceChecks )
           {
-            ForEach ( $parent in $resourcecheck.Parent )
+            ForEach ( $parent in $r.Parent )
             {
-              $value = $parent.($resourceCheck.Name)
+              $value = $parent.($r.Name)
               
               if ($value -ne $null)
               {
@@ -430,6 +415,12 @@ For($k = 1; $k -le 5 ; $k++ )
                       $resourceCheck = New-Object ResourceMember
                       $resourceCheck.Name = $member.Name
                       $resourceCheck.Parent = $value
+                      
+                      foreach ($l in $r.Layers)
+                      {
+                        $resourceCheck.Layers += $l
+                      }
+                      $resourceCheck.Layers += $member.Name
           
                       $newResourceMembers += $resourceCheck
                     }
@@ -444,6 +435,13 @@ For($k = 1; $k -le 5 ; $k++ )
                         $resourceCheck = New-Object ResourceMember
                         $resourceCheck.Name = $member.Name
                         $resourceCheck.Parent = $v
+                        $resourceCheck.IsArray = $True
+
+                        foreach ($l in $r.Layers)
+                        {
+                          $resourceCheck.Layers += $l
+                        }
+                        $resourceCheck.Layers += $member.Name
           
                         $newResourceMembers += $resourceCheck
                       }
@@ -454,7 +452,82 @@ For($k = 1; $k -le 5 ; $k++ )
                     if ( $value -match "\[parameters\('" )
                     {
                       $parameterList += $value.Split("'")[1]
+                    
                     }
+
+                    if (($r.Name -eq "id") -and ($value -match "resourceId"))
+                    {
+                      $indexOfParameterBegin = $value.IndexOf("parameters('") 
+                      $indexOfParameterEnd = $value.IndexOf("')",$indexOfParameterBegin) 
+                      $parameterName = $value.Substring($indexOfParameterBegin + 12 , $indexOfParameterEnd - $indexOfParameterBegin -12) 
+                      $parameterList += $parameterName
+
+                      if( $parameterName.Split("_").Count -eq 3 )
+                      {
+                        $sourceName = $parameterName.Split("_")[1]
+                      }
+                      else
+                      {
+                        $sourceName = $parameterName.Split("_")[1]
+                        for ( $i = 2; $i -lt ($parameterName.Split("_").Count - 1); $i++ )
+                        {
+                          $sourceName = $sourceName + "-" + $parameterName.Split("_")[$i]
+                        }
+                      }
+            
+                      $targetResource = $vmResources | Where-Object { ($_.SourceName -eq $sourceName ) -and ( $_.ResourceType -eq $parameterName.Split("_")[0] ) }
+                      
+                      if ($targetResource.count -ne 1 )
+                      {
+                        Throw "Cannot find the target resource for the parameter or find more than one."
+                      }
+     
+                      $newValue = $value.Replace("resourceId(", "resourceId('" + $targetResource.DestinationResourceGroup + "', ")
+                      
+                      $numberOfLayer = 0
+                      foreach ($layer in $r.Layers)
+                      {
+                        $name = "Layer" + $numberOfLayer
+                        New-Variable -Name $name -Value $layer -Force
+                        $numberOfLayer++
+                      }
+                      
+                      
+                      if ($r.IsArray)
+                      {
+                        switch($r.Layers.count)
+                        {
+                          1
+                          { ($resource.properties | Where-Object { $_.$Layer0 -eq $value }).$Layer0 = $newValue }
+                          2
+                          { ($resource.properties.$Layer0 | Where-Object { $_.$Layer1 -eq $value }).$Layer1 = $newValue}
+                          3
+                          { ($resource.properties.$Layer0.$Layer1 | Where-Object { $_.$Layer2 -eq $value }).$Layer2 = $newValue}
+                          4
+                          { ($resource.properties.$Layer0.$Layer1.$Layer2 | Where-Object { $_.$Layer3 -eq $value }).$Layer3 = $newValue }
+                          Default
+                          { Thow "Layer OverFlow" }
+                        }
+                      }
+                      else
+                      {
+                        switch($r.Layers.count)
+                        {
+                          1
+                          { $resource.properties.$Layer0 = $newValue }
+                          2
+                          { $resource.properties.$Layer0.$Layer1 = $newValue}
+                          3
+                          { $resource.properties.$Layer0.$Layer1.$Layer2 = $newValue}
+                          4
+                          { $resource.properties.$Layer0.$Layer1.$Layer2.$Layer3 = $newValue }
+                          Default
+                          { Thow "Layer OverFlow" }
+                        }
+                      }
+                      
+                    }
+
                   }
                 } 
               }
