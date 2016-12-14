@@ -624,13 +624,13 @@ if ( ($destVM -ne $null) -and ( $destVM.ProvisioningState -eq "Succeeded" ))
   Write-Progress -id 30 -ParentId 0 -activity "Building VM" -status "Succeeded" -percentComplete 100
   
   $templatepath = $Env:TEMP + "\AzureMigrationtool\$tempId"
-  #Remove-Item $templatepath* -Force -Recurse
+  Remove-Item $templatepath* -Force -Recurse
 
 }
 else
 {
   $templatepath = $Env:TEMP + "\AzureMigrationtool\$tempId"
-  #Remove-Item $templatepath* -Force -Recurse
+  Remove-Item $templatepath* -Force -Recurse
 
   Throw "The VM Migration is Failed."
 }
