@@ -617,7 +617,8 @@ For($k = 1; $k -le 5 ; $k++ )
 ####Validate the VM Deployment####
 Write-Progress -id 30 -ParentId 0 -activity "Building VM" -status "Validating deployment" -percentComplete 95
 
-$destVM = Get-AzureRmVM -ResourceGroupName $vm.ResourceGroupName -Name $vm.Name
+$vmDestinationRG = ( $vmResources | Where-Object { ($_.SourceName -eq $vm.Name) -and ($_.SourceResourceGroup -eq $vm.ResourceGroupName) -and ( $_.ResourceType -eq "virtualMachines") } ).DestinationResourceGroup
+$destVM = Get-AzureRmVM -ResourceGroupName $vmDestinationRG -Name $vm.Name
 
 if ( ($destVM -ne $null) -and ( $destVM.ProvisioningState -eq "Succeeded" ))
 {
