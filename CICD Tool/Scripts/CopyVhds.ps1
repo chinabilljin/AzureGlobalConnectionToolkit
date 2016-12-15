@@ -49,7 +49,7 @@ if ($RenameInfos.Count -ne 0)
 {
   ForEach( $RenameInfo in $RenameInfos )
   {
-    if ( $RenameInfo.GetType().FullName -ne "ResourceProfile" )
+    if ( $RenameInfo.GetType().FullName -notmatch "ResourceProfile" )
     {
       Throw "-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile"
     }
@@ -160,7 +160,7 @@ if ( $RenameInfos.Count -ne 0 )
   ForEach ( $stor in $StorageInfos )
   {
     $renameInfo = $RenameInfos | Where-Object { ( $_.SourceName -eq $stor.SrcAccountName ) -and ( $_.ResourceType -eq "storageAccounts" ) }
-    if ( ($renameInfo -ne $null) )
+    if ( $renameInfo -ne $null )
     {
       $stor.DestAccountName = $renameInfo.Destinationname
     }

@@ -81,7 +81,7 @@ Function Add-StorageList
 Set-AzureRmContext -Context $SrcContext | Out-Null
 
 #VM
-$vmResources = @()
+$Script:vmResources = @()
 
 Add-ResourceList -resourceId $vm.Id
 
@@ -173,7 +173,6 @@ foreach($dataDisk in $vm.StorageProfile.DataDisks)
 
 
 ####Rename Function####
-
 [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
 [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
 

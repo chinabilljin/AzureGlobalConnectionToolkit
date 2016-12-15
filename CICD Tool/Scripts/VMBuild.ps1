@@ -55,7 +55,7 @@ if ($RenameInfos.Count -ne 0)
 {
   ForEach( $RenameInfo in $RenameInfos )
   {
-    if ( $RenameInfo.GetType().FullName -ne "ResourceProfile" )
+    if ( $RenameInfo.GetType().FullName -notmatch "ResourceProfile" )
     {
       Throw "-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile"
     }
@@ -228,9 +228,25 @@ Foreach ( $rg in $sourceResourceGroups )
 
   $paraMembers = $sourceTemplate.parameters | Get-Member -MemberType NoteProperty
   
+  #Update the rename result in parameter
   foreach ( $pm in $paraMembers )
   {
     $pmName = $pm.Name
+    if (( $pmName -match "_name" ) )
+    {
+      $sourceName = $pmName.Split("_")[1]
+      for ( $i = 2; $i -lt ($pmName.Split("_").Count - 1); $i++ )
+      {
+        $sourceName = $sourceName + "-" + $pmName.Split("_")[$i]
+      }
+                 
+      $targetResource = $vmResources | Where-Object { ($_.SourceName -eq $sourceName ) -and ( $_.SourceResourceGroup -eq $rg ) -and ( $_.ResourceType -eq $pmName.Split("_")[0] ) }
+          
+      if ( $targetResource -ne $null )
+      {         
+        $sourceTemplate.parameters.$pmName.defaultValue = $targetresource.DestinationName
+      }            
+    }
 
     $sourceParameters | Add-Member -Name $pmName -MemberType NoteProperty -Value $sourceTemplate.parameters.$pmName
   }
@@ -345,7 +361,6 @@ Class ResourceMember
   [String] $Name
   [PSObject] $Parent
   [Object[]] $Layers
-  [bool] $IsArray = $false
 }
 
 $progressPercentage = 40
@@ -366,11 +381,9 @@ For($k = 1; $k -le 5 ; $k++ )
       $targettemplate | Add-Member -Name "parameters" -MemberType Noteproperty -Value $null
       $targettemplate | Add-Member -Name "variables" -MemberType Noteproperty -Value $null
       $targettemplate | Add-Member -Name "resources" -MemberType Noteproperty -Value $null
-
-      
+    
       $targettemplate.resources = $destResourceList.$rg.$currentPhase
 
-      
       #Get the related parameters
       $parameterList = @()
       ForEach ( $resource in $targettemplate.resources ) 
@@ -435,7 +448,6 @@ For($k = 1; $k -le 5 ; $k++ )
                         $resourceCheck = New-Object ResourceMember
                         $resourceCheck.Name = $member.Name
                         $resourceCheck.Parent = $v
-                        $resourceCheck.IsArray = $True
 
                         foreach ($l in $r.Layers)
                         {
@@ -449,12 +461,14 @@ For($k = 1; $k -le 5 ; $k++ )
                   }
                   Default
                   {
+                    #collect the required template
                     if ( $value -match "\[parameters\('" )
                     {
                       $parameterList += $value.Split("'")[1]
                     
                     }
 
+                    #update resourceId to make it independent
                     if (($r.Name -eq "id") -and ($value -match "resourceId"))
                     {
                       $indexOfParameterBegin = $value.IndexOf("parameters('") 
@@ -477,9 +491,19 @@ For($k = 1; $k -le 5 ; $k++ )
             
                       $targetResource = $vmResources | Where-Object { ($_.SourceName -eq $sourceName ) -and ( $_.ResourceType -eq $parameterName.Split("_")[0] ) }
                       
-                      if ($targetResource.count -ne 1 )
+                      if ($targetResource -eq $null )
                       {
-                        Throw "Cannot find the target resource for the parameter or find more than one."
+                        Throw ("Cannot find the target resource for the parameter: " + $parameterName)
+                      }
+                      
+                      if ($targetResource.count -gt 1)
+                      {
+                        $indexOfParameterBegin = $resource.Name.IndexOf("parameters('") 
+                        $indexOfParameterEnd = $resource.Name.IndexOf("')",$indexOfParameterBegin) 
+                        $baseParameterName = $resource.Name.Substring($indexOfParameterBegin + 12 , $indexOfParameterEnd - $indexOfParameterBegin -12) 
+                        
+                        $baseResource = $vmResources | Where-Object {($resource.type -match $_.ResourceType) -and ( $_.DestinationName -eq $sourceParameters.$baseParameterName) -and ( $_.DestinationResourceGroup -eq $rg )}
+                        $targetResource = $vmResources | Where-Object { ($_.SourceName -eq $sourceName ) -and ( $_.ResourceType -eq $parameterName.Split("_")[0] ) -and ( $_.SourceResourceGroup -eq $baseResource.SourceResourceGroup ) }
                       }
      
                       $newValue = $value.Replace("resourceId(", "resourceId('" + $targetResource.DestinationResourceGroup + "', ")
@@ -492,53 +516,32 @@ For($k = 1; $k -le 5 ; $k++ )
                         $numberOfLayer++
                       }
                       
-                      
-                      if ($r.IsArray)
+                      #update the resource id value
+                      switch($r.Layers.count)
                       {
-                        switch($r.Layers.count)
-                        {
-                          1
-                          { ($resource.properties | Where-Object { $_.$Layer0 -eq $value }).$Layer0 = $newValue }
-                          2
-                          { ($resource.properties.$Layer0 | Where-Object { $_.$Layer1 -eq $value }).$Layer1 = $newValue}
-                          3
-                          { ($resource.properties.$Layer0.$Layer1 | Where-Object { $_.$Layer2 -eq $value }).$Layer2 = $newValue}
-                          4
-                          { ($resource.properties.$Layer0.$Layer1.$Layer2 | Where-Object { $_.$Layer3 -eq $value }).$Layer3 = $newValue }
-                          Default
-                          { Thow "Layer OverFlow" }
-                        }
-                      }
-                      else
-                      {
-                        switch($r.Layers.count)
-                        {
-                          1
-                          { $resource.properties.$Layer0 = $newValue }
-                          2
-                          { $resource.properties.$Layer0.$Layer1 = $newValue}
-                          3
-                          { $resource.properties.$Layer0.$Layer1.$Layer2 = $newValue}
-                          4
-                          { $resource.properties.$Layer0.$Layer1.$Layer2.$Layer3 = $newValue }
-                          Default
-                          { Thow "Layer OverFlow" }
-                        }
-                      }
-                      
+                        1
+                        { ($resource.properties | Where-Object { $_.$Layer0 -eq $value }).$Layer0 = $newValue }
+                        2
+                        { ($resource.properties.$Layer0 | Where-Object { $_.$Layer1 -eq $value }).$Layer1 = $newValue}
+                        3
+                        { ($resource.properties.$Layer0.$Layer1 | Where-Object { $_.$Layer2 -eq $value }).$Layer2 = $newValue}
+                        4
+                        { ($resource.properties.$Layer0.$Layer1.$Layer2 | Where-Object { $_.$Layer3 -eq $value }).$Layer3 = $newValue }
+                        Default
+                        { Thow "Layer OverFlow" }
+                      }                     
                     }
-
                   }
                 } 
               }
             }
           }
           
-          $resourceChecks = $newResourceMembers
-          
+          $resourceChecks = $newResourceMembers       
         }
       }
       
+      #Collect the required parameters into template
       if ($parameterList.Count -ne 0)
       {
         $parameterList = $parameterList | Select-Object -Unique
@@ -563,41 +566,19 @@ For($k = 1; $k -le 5 ; $k++ )
           {
             $targetparameters.$tmname.defaultValue = $True
           }
-          if (( $tmname -match "_name" ) -and ($tmname -notmatch "_name_") )
-          {
-            if( $tmname.Split("_").Count -eq 3 )
-            {
-              $sourceName = $tmname.Split("_")[1]
-            }
-            else
-            {
-              $sourceName = $tmname.Split("_")[1]
-              for ( $i = 2; $i -lt ($tmname.Split("_").Count - 1); $i++ )
-              {
-                $sourceName = $sourceName + "-" + $tmname.Split("_")[$i]
-              }
-            }
-            
-            $targetResource = $vmResources | Where-Object { ($_.SourceName -eq $sourceName ) -and ( $_.DestinationResourceGroup -eq $rg ) -and ( $_.ResourceType -eq $tmname.Split("_")[0] ) }
-          
-            if ( $targetResource -ne $null )
-            {         
-              $targetparameters.$tmname.defaultValue = $targetresource.DestinationName
-            }
-            
-          }
         }
 
         $targettemplate.parameters = $targetparameters
       }
       
+      #Output the json template
       $targettemplatename = "Target" + $rg + $currentPhase + ".json"
       
       $targetjson = $targettemplate | ConvertTo-Json -Depth 9
       $targettemplatepath = $Env:TEMP + "\AzureMigrationtool\$tempId" + "\" + $targettemplatename
       $targetjson -replace "\\u0027", "'" | Out-File $targettemplatepath
       
-     
+      #Actual ARM deployment
       New-AzureRmResourceGroupDeployment -ResourceGroupName $rg -TemplateFile $targettemplatepath | Out-Null    
 
     }
@@ -615,10 +596,11 @@ For($k = 1; $k -le 5 ; $k++ )
 
 
 ####Validate the VM Deployment####
+Set-AzureRmContext -Context $DestContext | Out-Null
 Write-Progress -id 30 -ParentId 0 -activity "Building VM" -status "Validating deployment" -percentComplete 95
 
-$vmDestinationRG = ( $vmResources | Where-Object { ($_.SourceName -eq $vm.Name) -and ($_.SourceResourceGroup -eq $vm.ResourceGroupName) -and ( $_.ResourceType -eq "virtualMachines") } ).DestinationResourceGroup
-$destVM = Get-AzureRmVM -ResourceGroupName $vmDestinationRG -Name $vm.Name
+$vmDestination =  $vmResources | Where-Object { ($_.SourceName -eq $vm.Name) -and ($_.SourceResourceGroup -eq $vm.ResourceGroupName) -and ( $_.ResourceType -eq "virtualMachines") } 
+$destVM = Get-AzureRmVM -ResourceGroupName $vmDestination.DestinationResourceGroup -Name $vmDestination.DestinationName
 
 if ( ($destVM -ne $null) -and ( $destVM.ProvisioningState -eq "Succeeded" ))
 {

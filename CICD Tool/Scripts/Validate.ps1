@@ -5,7 +5,7 @@
 
     [Parameter(Mandatory=$False)]
     [AllowNull()]
-    [PSObject] 
+    [Object[]] 
     $RenameInfos,
 
     [Parameter(Mandatory=$True)]
@@ -50,7 +50,7 @@
   {
     ForEach( $RenameInfo in $RenameInfos )
     {
-      if ( $RenameInfo.GetType().FullName -ne "ResourceProfile" )
+      if ( $RenameInfo.GetType().FullName -notmatch "ResourceProfile" )
       {
         Throw "`-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile"
       }
@@ -389,7 +389,7 @@
   {
     if($resource.ResourceType -eq "publicIPAddresses"){
         Set-AzureRmContext -Context $SrcContext | Out-Null
-        $sourcePublicAddress = Get-AzureRmPublicIpAddress -Name $resource.DestinationName -ResourceGroupName $resource.DestinationResourceGroup
+        $sourcePublicAddress = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
         Set-AzureRmContext -Context $DestContext | Out-Null
         if($sourcePublicAddress.DnsSettings.DomainNameLabel -ne $null)
         {

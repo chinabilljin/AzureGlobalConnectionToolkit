@@ -58,7 +58,7 @@
   {
     ForEach( $RenameInfo in $RenameInfos )
     {
-      if ( $RenameInfo.GetType().FullName -ne "ResourceProfile" )
+      if ( $RenameInfo.GetType().FullName -notmatch "ResourceProfile" )
       {
         Throw "-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile"
       }
@@ -104,120 +104,7 @@
     AzureUSGovernment = 3
   }
 
- $showform = {
-    Function Show-Form
-      {
-        Param(
-          [Parameter(Mandatory=$True)]
-          [String] $title,
-
-          [Parameter(Mandatory=$True)]
-          [String[]] $options,
-
-          [Switch]
-          $MultipleChoice
-        )
-  
-        [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-        [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
-
-        $objForm = New-Object System.Windows.Forms.Form 
-        $objForm.Text = "Azure Global Connection Center"
-        $objForm.Size = New-Object System.Drawing.Size(700,500) 
-        $objForm.StartPosition = "CenterScreen"
-
-        $objForm.KeyPreview = $True
-
-        $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
-            {
-              $objForm.DialogResult = "OK"
-              $objForm.Close()
-            }
-        })
-
-        $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
-        {$objForm.Close()}})
-
-        $objForm.BackColor = "#1F4E79"
-
-        $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
-        $OKButton = New-Object System.Windows.Forms.Button
-        $OKButton.Location = New-Object System.Drawing.Size(10,400)
-        $OKButton.Size = New-Object System.Drawing.Size(180,40)
-        $OKButton.Text = "OK"
-        $OKButton.Font = $Buttonfont
-        $OKButton.BackColor = "Gainsboro"
-
-        $OKButton.Add_Click(
-          {    
-            $objForm.DialogResult = "OK"
-            $objForm.Close()
-        })
-
-        $objForm.Controls.Add($OKButton)
-
-        $CancelButton = New-Object System.Windows.Forms.Button
-        $CancelButton.Location = New-Object System.Drawing.Size(200,400)
-        $CancelButton.Size = New-Object System.Drawing.Size(180,40)
-        $CancelButton.Text = "Cancel"
-        $CancelButton.Font = $Buttonfont
-        $CancelButton.BackColor = "Gainsboro"
-
-        $CancelButton.Add_Click({$objForm.Close()})
-        $objForm.Controls.Add($CancelButton)
-
-        $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
-        $objLabel = New-Object System.Windows.Forms.Label
-        $objLabel.Location = New-Object System.Drawing.Size(10,20) 
-        $objLabel.AutoSize = $True
-        $objLabel.BackColor = "Transparent"
-        $objLabel.ForeColor = "White"
-        $objLabel.Font = $objFont
-        $objLabel.Text = $title
-        $objForm.Controls.Add($objLabel) 
-
-        $objListbox = New-Object System.Windows.Forms.Listbox 
-        $objListbox.Location = New-Object System.Drawing.Size(10,70) 
-        $objListbox.Size = New-Object System.Drawing.Size(650,30) 
-
-        if($MultipleChoice)
-        {
-          $objListbox.SelectionMode = "MultiExtended"
-        }
-
-        foreach ( $option in $options ) {
-          [void] $objListbox.Items.Add($option)
-        }
-
-        $objlistfont = New-Object System.Drawing.Font("Arial",14,[System.Drawing.FontStyle]::Regular)
-        $objListbox.Font = $objlistfont
-        $objListbox.Height = 320
-        $objForm.Controls.Add($objListbox) 
-
-
-        $objForm.Add_Shown({$objForm.Activate()})
-        [void] $objForm.ShowDialog()
-        if ( $objForm.DialogResult -eq "OK" ) {
-
-          $responses = @()
-          foreach ( $selection in $objListbox.SelectedItems ) {
-            $responses+= $selection
-          }
-
-          $objForm.Dispose()
-
-        }
-
-        if ($responses.Count -eq 0)
-        {
-          $objForm.Dispose()
-          Break
-        }
-
-        return $responses
-      }
-  }
-
+  ##Form for GUI input
   Function SelectionBox
   {
     Param(
@@ -230,14 +117,106 @@
       [Switch]
       $MultipleChoice
     )
-    if($MultipleChoice){
-        $result = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1] -MultipleChoice $args[2]} -ArgumentList $title,$options,$MultipleChoice | Receive-Job -Wait -AutoRemoveJob
+ 
+    [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
+    [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
+
+    $objForm = New-Object System.Windows.Forms.Form 
+    $objForm.Text = "Azure Global Connection Center"
+    $objForm.Size = New-Object System.Drawing.Size(700,500) 
+    $objForm.StartPosition = "CenterScreen"
+
+    $objForm.KeyPreview = $True
+
+    $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
+        {
+          $objForm.DialogResult = "OK"
+          $objForm.Close()
+        }
+    })
+
+    $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
+    {$objForm.Close()}})
+
+    $objForm.BackColor = "#1F4E79"
+
+    $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
+    $OKButton = New-Object System.Windows.Forms.Button
+    $OKButton.Location = New-Object System.Drawing.Size(10,400)
+    $OKButton.Size = New-Object System.Drawing.Size(180,40)
+    $OKButton.Text = "OK"
+    $OKButton.Font = $Buttonfont
+    $OKButton.BackColor = "Gainsboro"
+
+    $OKButton.Add_Click(
+    {    
+      $objForm.DialogResult = "OK"
+      $objForm.Close()
+    })
+
+    $objForm.Controls.Add($OKButton)
+
+    $CancelButton = New-Object System.Windows.Forms.Button
+    $CancelButton.Location = New-Object System.Drawing.Size(200,400)
+    $CancelButton.Size = New-Object System.Drawing.Size(180,40)
+    $CancelButton.Text = "Cancel"
+    $CancelButton.Font = $Buttonfont
+    $CancelButton.BackColor = "Gainsboro"
+
+    $CancelButton.Add_Click({$objForm.Close()})
+    $objForm.Controls.Add($CancelButton)
+
+    $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
+    $objLabel = New-Object System.Windows.Forms.Label
+    $objLabel.Location = New-Object System.Drawing.Size(10,20) 
+    $objLabel.AutoSize = $True
+    $objLabel.BackColor = "Transparent"
+    $objLabel.ForeColor = "White"
+    $objLabel.Font = $objFont
+    $objLabel.Text = $title
+    $objForm.Controls.Add($objLabel) 
+
+    $objListbox = New-Object System.Windows.Forms.Listbox 
+    $objListbox.Location = New-Object System.Drawing.Size(10,70) 
+    $objListbox.Size = New-Object System.Drawing.Size(650,30) 
+
+    if($MultipleChoice)
+    {
+      $objListbox.SelectionMode = "MultiExtended"
     }
-    else{
-        $result = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1]} -ArgumentList $title,$options | Receive-Job -Wait -AutoRemoveJob
+
+    foreach ( $option in $options ) {
+      [void] $objListbox.Items.Add($option)
     }
-    return $result
+
+    $objlistfont = New-Object System.Drawing.Font("Arial",14,[System.Drawing.FontStyle]::Regular)
+    $objListbox.Font = $objlistfont
+    $objListbox.Height = 320
+    $objForm.Controls.Add($objListbox) 
+
+
+    $objForm.Add_Shown({$objForm.Activate()})
+    [void] $objForm.ShowDialog()
+    if ( $objForm.DialogResult -eq "OK" ) {
+
+      $responses = @()
+      foreach ( $selection in $objListbox.SelectedItems ) {
+        $responses+= $selection
+      }
+
+      $objForm.Dispose()
+
+    }
+
+    if ($responses.Count -eq 0)
+    {
+      $objForm.Dispose()
+      Break
+    }
+
+    return $responses
   }
+  
 
   ##Get the parameter if not provided
   Try
@@ -511,5 +490,5 @@
     }
     Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Succeeded" -percentComplete 100
   
-    return ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" + "Migration Succeeded")
+    return ("VM: " + $vm.Name +  " Migration Succeeded.")
   }

@@ -246,7 +246,7 @@ else
     {
       $targetStor = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $renameInfo.SourceName }
       $targetStor.Location = $targetLocation
-      $targetStor.StorageAccountName = $renameInfo.DestinationName
+      $targetStor.StorageAccountName = $renameInfo.DestinationName.ToLower()
       $targetStor.ResourceGroupName = $renameInfo.DestinationResourceGroup
 
       $Script:storageAccounts += $targetStor
