@@ -13,6 +13,7 @@ CICD Tool is designed to solve this problem when customer want their services ca
 * Support ARM VM Migration from/to Azure, Azure in China and Azure in Germany
 * Support Data Sync through VHD copy
 * Support Validation only mode
+* Support Rename
 
 VM migration will be complete through four phases.
 
@@ -33,7 +34,7 @@ ARM VM Migration has two mode:
 
 #### Module Mode
 
-1. Download the [msi installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.1.0/AzureGlobalConnectionToolkit.0.1.0.msi)
+1. Download the [msi installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.2.0/AzureGlobalConnectionToolkit.0.2.0.msi)
 2. Install
 
 #### Script Mode
@@ -78,6 +79,7 @@ $SrcContext = Get-AzureRmContext
 Then use $SrcContext as parameter input
 
 __-DestContext__
+
 The credential from destination subscription, you can get the context after you input the credential (like after Add-AzureRmAccount) through
 
 ```powershell
@@ -92,19 +94,27 @@ The target location VM migrate to. you can use Get-AzureRmLocation to get the fu
 
 If you want to perform specific phase only rather than the whole migration, you can use following parameters:
 
-__-Validate__
+__-JobType__
+
+If you want to execute the specific job only, you can specify the job in this parameter including:
+
+* __Rename__
+
+Get the output of the rename function and it can be the input for other jobs.
+
+* __Validate__
 
 It will perform validation only and return the check result.
 
-__-Prepare__
+* __Prepare__
 
 It will create the resource group and storage accounts for migration.
 
-__-VhdCopy__
+* __VhdCopy__
 
 It will copy the VHDs of VM to destination. But the storage accounts in destination need to be created before execute this commend.
 
-__-BuildVM__
+* __VMBuild__
 
 It will start the VM build up in destination. But the VHD Copy and Resource Group creation need to be done ahead. Performing this command also require to input __-osDiskUri__ and __-dataDiskUris__ if any. Please note it in __-dataDiskUris__, the input array need to matach in lun number to make sure the configuration consistent.
 
@@ -121,6 +131,7 @@ The Script mode consists by five scripts:
 3. __Prepare.ps1:__ Prepare only script.
 4. __CopyVhd.ps1:__ Vhd copy only script.
 5. __VMBuild.ps1:__ VM build only script.
+6. __Rename.ps1:__ Perform the rename and it can be the input for other script.
 
 All the script use the same parameter as Module Mode. You can see the parameter description in Module Mode section above.
 

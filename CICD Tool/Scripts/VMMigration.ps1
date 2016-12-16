@@ -14,13 +14,13 @@
     [Parameter(Mandatory=$false)]
     [PSObject] $DestContext,
 
-    [switch] $Validate,
+    [Parameter(Mandatory=$false)]
+    [ValidateSet("Validate", "Prepare", "VhdCopy", "VMBuild", "Rename", "All")]
+    [String] $JobType = "All",
 
-    [switch] $Prepare,
-
-    [switch] $VhdCopy,
-
-    [switch] $BuildVM,
+    [Parameter(Mandatory=$false)]
+    [Object[]]
+    $RenameInfos, 
 
     [Parameter(Mandatory=$false)]
     [String] $osDiskUri,
@@ -53,6 +53,44 @@
       Throw "-DestContext : parameter type is invalid. Please enter the right parameter type."
     }
   }
+  
+  if ($RenameInfos.Count -ne 0)
+  {
+    ForEach( $RenameInfo in $RenameInfos )
+    {
+      if ( $RenameInfo.GetType().FullName -notmatch "ResourceProfile" )
+      {
+        Throw "-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile"
+      }
+    }
+  }
+
+  Function Check-AzureRmMigrationPSRequirement
+  {
+    $moduleList = Get-Module -ListAvailable
+
+    $AzureRmStorage = $moduleList | Where-Object { $_.Name -eq "AzureRm.Storage" }
+    $AzureRmCompute = $moduleList | Where-Object { $_.Name -eq "AzureRm.Compute" }
+    $AzureRMNetwork = $moduleList | Where-Object { $_.Name -eq "AzureRm.Network" }
+    $AzureRMProfile = $moduleList | Where-Object { $_.Name -eq "AzureRm.Profile" }
+
+    function Check-AzurePSModule
+    {
+      Param( [PSObject] $module )
+
+      if ( $module -eq $null )
+      { Throw "AzureRm PowerShell Module does not successfully install on PowerShell Environment. Please Install before execute this script." }
+
+      if ( !(($module.Version.Major -ge 2) -or (($module.Version.Major -eq 1) -and ( $module.Version.Minor -ge 7 ))) )
+      { Throw "This script requires AzureRm PowerShell version higher than 1.7.0. Please install the latest Azure Powershell before execute this script." }
+    
+    }
+
+    Check-AzurePSModule -module $AzureRmStorage
+    Check-AzurePSModule -module $AzureRmCompute
+    Check-AzurePSModule -module $AzureRMNetwork
+    Check-AzurePSModule -module $AzureRMProfile
+  }
 
   ##PS Module Check
   Check-AzureRmMigrationPSRequirement
@@ -66,6 +104,7 @@
     AzureUSGovernment = 3
   }
 
+  ##Form for GUI input
   Function SelectionBox
   {
     Param(
@@ -78,7 +117,7 @@
       [Switch]
       $MultipleChoice
     )
-  
+ 
     [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
     [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
 
@@ -110,9 +149,9 @@
     $OKButton.BackColor = "Gainsboro"
 
     $OKButton.Add_Click(
-      {    
-        $objForm.DialogResult = "OK"
-        $objForm.Close()
+    {    
+      $objForm.DialogResult = "OK"
+      $objForm.Close()
     })
 
     $objForm.Controls.Add($OKButton)
@@ -158,7 +197,6 @@
 
     $objForm.Add_Shown({$objForm.Activate()})
     [void] $objForm.ShowDialog()
-
     if ( $objForm.DialogResult -eq "OK" ) {
 
       $responses = @()
@@ -166,15 +204,19 @@
         $responses+= $selection
       }
 
+      $objForm.Dispose()
+
     }
 
     if ($responses.Count -eq 0)
     {
+      $objForm.Dispose()
       Break
     }
 
     return $responses
   }
+  
 
   ##Get the parameter if not provided
   Try
@@ -296,6 +338,12 @@
 
       $targetLocation = $locationCheck.Location
     }
+    
+    if ($RenameInfos -eq $null)
+    {
+      $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext
+    }
+
   }
   Catch
   {
@@ -303,70 +351,91 @@
     Throw "Input Parameters are not set correctly. Please try again."
   }
 
-  ##Validation Only
-  if ($Validate)
-  {
-    Try
-    {
-      $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
-    }
-    Catch
-    {
-      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
-      Throw "Validation Failed. Please check the error message and try again."
-    }
-    return $validationResult
-  }
 
-  ##Prepare Only
-  if ($Prepare)
-  {
-    Try
-    {
-      Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
-    }
-    Catch
-    {
-      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
-      Throw "Preparation Failed. Please check the error message and try again."
-    }
-    break
-  }
 
-  ##VHD Copy Only
-  if ($VhdCopy)
-  {
-    Try
-    { 
-      $diskUris = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
-    }
-    Catch
-    {
-      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
-      Throw "Vhd Copy Failed. Please check the error message and try again."
-    }
-    return $diskUris
-  }
 
-  ##VMBuild Only
-  if ($BuildVM)
+  Switch($JobType)
   {
-    if([String]::IsNullOrEmpty($osDiskUri) )
+    ##Validation Only
+    "Validate"
     {
-      Throw ( "-osDiskUri Parameter is null or empty. Please input correct value." )
+      Try
+      {
+        $validationResult = .\Validate.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+      }
+      Catch
+      {
+        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        Throw "Validation Failed. Please check the error message and try again."
+      }
+      return $validationResult
+    }
+
+    ##Prepare Only
+    "Prepare"
+    {
+      Try
+      {
+        .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      }
+      Catch
+      {
+        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        Throw "Preparation Failed. Please check the error message and try again."
+      }
+      break
+    }
+
+    ##VHD Copy Only
+    "VhdCopy"
+    {
+      Try
+      { 
+        $diskUris = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      }
+      Catch
+      {
+        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        Throw "Vhd Copy Failed. Please check the error message and try again."
+      }
+      return $diskUris
+    }
+
+    ##VMBuild Only
+    "VMBuild"
+    {
+      if([String]::IsNullOrEmpty($osDiskUri) )
+      {
+        Throw ( "-osDiskUri Parameter is null or empty. Please input correct value." )
+      }
+    
+      Try
+      {
+        .\VMBuild.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris -RenameInfos $RenameInfos
+      }
+      Catch
+      {
+        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        Throw "VM Building Failed. Please check the error message and try again."
+      } 
     }
     
-    Try
+    #Rename Only
+    "Rename"
     {
-      Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris
+      Try
+      {
+        $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext
+      }
+      Catch
+      {
+        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        Throw "Rename Failed. Please check the error message and try again."
+      }
+      
+      return $RenameInfos
     }
-    Catch
-    {
-      Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
-      Throw "VM Building Failed. Please check the error message and try again."
-    } 
   }
-
 
   ##Confirm and Deploy
   $migrationConfirmation = [System.Windows.Forms.MessageBox]::Show("Migrate virtual machine: " + $vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")?" , "Azure Global Connection Center" , 4)
@@ -377,7 +446,7 @@
 
     Try
     {
-      $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+      $validationResult = .\Validate.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
     }
     Catch
     {
@@ -392,7 +461,7 @@
   
     Try
     {
-      Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
+      .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
     }
     Catch
     {
@@ -402,7 +471,7 @@
     
     Try
     {
-      $diskUris = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext
+      $diskUris = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
     }
     Catch
     {
@@ -412,7 +481,7 @@
     
     Try
     {
-      Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris
+      .\VMBuild.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris -RenameInfos $RenameInfos
     }
     Catch
     {
@@ -421,5 +490,5 @@
     }
     Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Succeeded" -percentComplete 100
   
-    return ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" + "Migration Succeeded")
+    return ("VM: " + $vm.Name +  " Migration Succeeded.")
   }

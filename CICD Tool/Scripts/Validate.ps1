@@ -4,7 +4,8 @@
     $vm,
 
     [Parameter(Mandatory=$False)]
-    [PSObject] 
+    [AllowNull()]
+    [Object[]] 
     $RenameInfos,
 
     [Parameter(Mandatory=$True)]
@@ -44,9 +45,17 @@
       Throw "-DestContext : parameter type is invalid. Please input the right parameter type: Microsoft.Azure.Commands.Profile.Models.PSAzureContext"
     }
   }
-
-  ##PS Module Check
-  Check-AzureRmMigrationPSRequirement
+  
+  if ($RenameInfos.Count -ne 0)
+  {
+    ForEach( $RenameInfo in $RenameInfos )
+    {
+      if ( $RenameInfo.GetType().FullName -notmatch "ResourceProfile" )
+      {
+        Throw "`-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile"
+      }
+    }
+  }
 
   ####Write Progress####
 
@@ -75,7 +84,7 @@
     $resource.ResourceType = $resourceId.Split("/")[7]
     $resource.DestinationResourceGroup = $resourceId.Split("/")[4]
    
-    $resourceCheck = $vmResources | Where-Object { $_ -eq $resource }
+    $resourceCheck = $vmResources | Where-Object { ($_.SourceName -eq $resource.SourceName) -and ($_.ResourceType -eq $resource.ResourceType) -and ($_.SourceResourceGroup -eq $resource.SourceResourceGroup) }
    
     if ( $resourceCheck -eq $null )
     {
@@ -380,7 +389,7 @@
   {
     if($resource.ResourceType -eq "publicIPAddresses"){
         Set-AzureRmContext -Context $SrcContext | Out-Null
-        $sourcePublicAddress = Get-AzureRmPublicIpAddress -Name $resource.DestinationName -ResourceGroupName $resource.DestinationResourceGroup
+        $sourcePublicAddress = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
         Set-AzureRmContext -Context $DestContext | Out-Null
         if($sourcePublicAddress.DnsSettings.DomainNameLabel -ne $null)
         {

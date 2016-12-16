@@ -47,7 +47,7 @@ Function Add-ResourceList
    $resource.ResourceType = $resourceId.Split("/")[7]
    $resource.SourceResourceGroup = $resourceId.Split("/")[4]
    
-   $resourceCheck = $vmResources | Where-Object { $_ -eq $resource }
+   $resourceCheck = $vmResources | Where-Object { ($_.SourceName -eq $resource.SourceName) -and ($_.ResourceType -eq $resource.ResourceType) -and ($_.SourceResourceGroup -eq $resource.SourceResourceGroup) }
    
    if ( $resourceCheck -eq $null )
    {
@@ -81,7 +81,7 @@ Function Add-StorageList
 Set-AzureRmContext -Context $SrcContext | Out-Null
 
 #VM
-$vmResources = @()
+$Script:vmResources = @()
 
 Add-ResourceList -resourceId $vm.Id
 
@@ -173,7 +173,6 @@ foreach($dataDisk in $vm.StorageProfile.DataDisks)
 
 
 ####Rename Function####
-
 [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
 [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
 
@@ -274,7 +273,6 @@ $objForm.Controls.Add($objListbox)
 
 $objForm.Add_Shown({$objForm.Activate()})
 
-
 [void] $objForm.ShowDialog()
 
 if ( $objForm.DialogResult -eq "OK" ) {
@@ -292,9 +290,11 @@ if ( $objForm.DialogResult -eq "OK" ) {
     $renameInfos += $renameInfo
   }
 
+  $objForm.Dispose()
 }
 else
 {
+  $objForm.Dispose()
   Break
 }
 
