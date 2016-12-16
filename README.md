@@ -4,7 +4,7 @@ The goal of Azure Global Connection Toolkit is to connect different national clo
 Typically, migration / integration between different Cloud environment has three phases:
 
 1. **Plan**:
-Duringthis phase, users are required to investigate the differences between different
+During this phase, users are required to investigate the differences between different
 cloud environments e.g. Azure Global vs. Azure China/Azure Germany. Differences
 in terms of costs and services parity, as well as risks, unfamiliarity and
 uncertainty in the new environment, causes the time and efforts required for
