@@ -145,6 +145,10 @@ After executing the cmdlet, it will follow the steps to perform VM migration:
 
 If you want to discover more or customize the script, please visit [CICD Tool](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool)
 
+## Known Issue
+
+If you are using the GUI for CICD tool input in PowerShell ISE environment, the window will freeze occasionally. This is because of some issues between PowerShell ISE and WinForm. Please use PowerShell (not ISE) instead if you encounter this issue.
+
 ## More Guidance
 
 If you target to investigate Azure in China, we highly recommend to browse [Azure China Playbook](https://aka.ms/azurechinaplaybook). Azure China Playbook contains the answers of FAQ when users consider to migrate or start using Azure in China.
