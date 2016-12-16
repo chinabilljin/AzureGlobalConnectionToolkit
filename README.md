@@ -140,8 +140,9 @@ After executing the cmdlet, it will follow the steps to perform VM migration:
 4. Select destination subscription.
 5. Select the VM to migrate.
 6. Select the VM destination location.
-7. Confirm the VM Migration.
-8. Start the VM Migration.
+7. Check the rename information. 
+8. Confirm the VM Migration.
+9. Start the VM Migration.
 
 If you want to discover more or customize the script, please visit [CICD Tool](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool)
 
