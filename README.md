@@ -57,13 +57,14 @@ customized or integrated into your existing DevOps process.
 * Support the assessment from Global Azure to China Azure or Azure Germany.
 * Support the assessment for entire subscription.
 * Support the service parity check.
-* Support limited item for cost estimation.
+* Support most item for cost estimation.
 
 ###CICD Tool
 
 * Support ARM VM migration only in current release(no classic VM support).
 * Support migration between different Azure Cloud Environments e.g. Azure Global to Azure China and Azure Germany.
 * Perform pre-migration validation.
+* Support Rename
 * PowerShell scripts based and customizable.
 * Support metadata and configuration migration (no extension support).
 
@@ -74,7 +75,7 @@ customized or integrated into your existing DevOps process.
 
 * Cloud Environment
   * Microsoft Azure as reference environment 
-  * Microsoft Azure in China as target environment
+  * Microsoft Azure in China / Microsoft in Germany as target environment
   
 * Client Environment
   * Windows PowerShell 3.0+
@@ -96,7 +97,7 @@ customized or integrated into your existing DevOps process.
 
 ###MSI Installer
 
-1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.1.0/AzureGlobalConnectionToolkit.0.1.0.msi) .
+1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.2.0/AzureGlobalConnectionToolkit.0.2.0.msi) .
 2. Run and Install.
 
 You can also find all the previous releases in [Azure Global Connection Toolkit Release](https://github.com/Azure/AzureGlobalConnectionToolkit/releases)
@@ -108,7 +109,7 @@ You can also find all the previous releases in [Azure Global Connection Toolkit 
 After installation, run cmdlet in your PoowerSehll.
 
 ```powershell
-New-AzureRmMigrationReport
+New-AzureRmMigrationReport -TargetEnvironment AzureChinaCloud 
 ```
 
 After executing the cmdlet, it will follow the steps to generate report:
@@ -128,7 +129,7 @@ Start-AzureRmVMMigration
 Run cmdlet if you only want to validate.
 
 ```powershell
-Start-AzureRmVMMigration -Validate
+Start-AzureRmVMMigration -JobType Validate
 ```
 
 After executing the cmdlet, it will follow the steps to perform VM migration:
