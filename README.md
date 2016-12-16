@@ -40,7 +40,7 @@ assist their migration planning tasks.
 The
 CI/CD (Continuous Integration and Continuous Delivery) Tool is a quick and
 simple tool to perform the actual migration through PowerShell scripts. For
-example, you can leverage the Cd/CD tool to migrate your VMs from Azure East
+example, you can leverage the CI/CD tool to migrate your VMs from Azure East
 Asia region to Azure China East region. The toolkit will sync your metadata and
 configuration between the source and the destination subscriptions, so that
 everything will be the same as the original after the migration has been
