@@ -106,7 +106,7 @@ You can also find all the previous releases in [Azure Global Connection Toolkit 
 
 ###Assessment Tool
 
-After installation, run cmdlet in your PowerSehll.
+After installation, run cmdlet in your PowerShell.
 
 ```powershell
 New-AzureRmMigrationReport -TargetEnvironment AzureChinaCloud 
