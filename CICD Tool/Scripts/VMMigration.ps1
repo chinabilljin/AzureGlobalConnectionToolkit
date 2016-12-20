@@ -105,7 +105,8 @@
   }
 
   ##Form for GUI input
-  Function SelectionBox
+  $showform = {
+  Function Show-Form
   {
     Param(
       [Parameter(Mandatory=$True)]
@@ -216,7 +217,29 @@
 
     return $responses
   }
-  
+  }
+
+  Function SelectionBox
+  {
+    Param(
+      [Parameter(Mandatory=$True)]
+      [String] $title,
+
+      [Parameter(Mandatory=$True)]
+      [String[]] $options,
+
+      [Switch]
+      $MultipleChoice
+    )
+    if($MultipleChoice){
+        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1] -MultipleChoice $args[2]} -ArgumentList $title,$options,$MultipleChoice
+    }
+    else{
+        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1]} -ArgumentList $title,$options
+    }
+    $result = $job | Receive-Job -Wait -AutoRemoveJob
+    return $result
+  }
 
   ##Get the parameter if not provided
   Try
