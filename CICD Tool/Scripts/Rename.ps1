@@ -182,8 +182,7 @@ Class ResourceProfile
    [String] $SourceName
    [String] $DestinationName
 }
-[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
+
 Function Rename {
 Param(
     [Parameter(Mandatory=$True)]
@@ -191,6 +190,8 @@ Param(
     [Object[]] 
     $vmResources
 )
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
 $objForm = New-Object System.Windows.Forms.Form 
 $objForm.Text = "Azure Global Connection Center"
 $objForm.Size = New-Object System.Drawing.Size(800,600) 

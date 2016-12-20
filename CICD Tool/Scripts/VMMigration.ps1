@@ -118,9 +118,8 @@
       [Switch]
       $MultipleChoice
     )
- 
-    [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-    [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
 
     $objForm = New-Object System.Windows.Forms.Form 
     $objForm.Text = "Azure Global Connection Center"
