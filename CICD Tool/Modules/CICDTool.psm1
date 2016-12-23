@@ -1738,6 +1738,7 @@ function Start-AzureRmVMMigrationBuild
 
 Function Set-AzureRmVMMigrationRename
 {
+
   Param(
     [Parameter(Mandatory=$True)]
     [PSObject] $vm,
@@ -1913,132 +1914,166 @@ Function Set-AzureRmVMMigrationRename
 
 
   ####Rename Function####
-  [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-  [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
-
-  $objForm = New-Object System.Windows.Forms.Form 
-  $objForm.Text = "Azure Global Connection Center"
-  $objForm.Size = New-Object System.Drawing.Size(800,600) 
-  $objForm.StartPosition = "CenterScreen"
-
-  $objForm.KeyPreview = $True
-  $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
-      {
-        $objForm.DialogResult = "OK"
-        $objForm.Close()
-      }
-  })
-
-  $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
-  {$objForm.Close()}})
-
-  $objForm.BackColor = "#1F4E79"
-
-  $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
-  $OKButton = New-Object System.Windows.Forms.Button
-  $OKButton.Location = New-Object System.Drawing.Size(10,500)
-  $OKButton.Size = New-Object System.Drawing.Size(180,40)
-  $OKButton.Text = "OK"
-  $OKButton.Font = $Buttonfont
-  $OKButton.BackColor = "Gainsboro"
-
-  $OKButton.Add_Click(
-    {    
-      $objForm.DialogResult = "OK"
-      $objForm.Close()
-  })
-
-  $objForm.Controls.Add($OKButton)
-
-  $CancelButton = New-Object System.Windows.Forms.Button
-  $CancelButton.Location = New-Object System.Drawing.Size(200,500)
-  $CancelButton.Size = New-Object System.Drawing.Size(180,40)
-  $CancelButton.Text = "Cancel"
-  $CancelButton.Font = $Buttonfont
-  $CancelButton.BackColor = "Gainsboro"
-
-  $CancelButton.Add_Click({$objForm.Close()})
-  $objForm.Controls.Add($CancelButton)
-
-  $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
-  $objLabel = New-Object System.Windows.Forms.Label
-  $objLabel.Location = New-Object System.Drawing.Size(10,20) 
-  $objLabel.AutoSize = $True
-  $objLabel.BackColor = "Transparent"
-  $objLabel.ForeColor = "White"
-  $objLabel.Font = $objFont
-  $objLabel.Text = "Please Rename Following Resources"
-  $objForm.Controls.Add($objLabel) 
-
-  $objListbox = New-Object System.Windows.Forms.DataGridView -Property @{
-    ColumnHeadersVisible = $true
-    RowHeadersVisible = $false
-    location = New-Object System.Drawing.Size(10,70)
-    Size = New-Object System.Drawing.Size(750,420)
-    AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
-    EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
-    Height = 320
-    Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
-    AllowUserToAddRows = $false
-  }
-
-  $objListbox.ColumnCount = 5
-
-  $objListbox.EnableHeadersVisualStyles = $false
-  $objListbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
-  $objListbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
-  
-  $objListbox.Columns[0].Name = "ResourceType"
-  $objListbox.Columns[0].ReadOnly = $True
-  $objListbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
-
-  $objListbox.Columns[1].Name = "SoureResourceGroup"
-  $objListbox.Columns[1].ReadOnly = $True
-  $objListbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
-  
-  $objListbox.Columns[2].Name = "DestinationResourceGroup"
-  $objListbox.Columns[2].DefaultCellStyle.BackColor = "White"
-
-  $objListbox.Columns[3].Name = "SourceName"
-  $objListbox.Columns[3].ReadOnly = $True
-  $objListbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
-  
-  $objListbox.Columns[4].Name = "DestinationName"
-  $objListbox.Columns[4].DefaultCellStyle.BackColor = "White"
-
-  $vmResources | ForEach { $objListbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceResourceGroup, $_.SourceName, $_.SourceName )  } | Out-Null
-
-  
-  $objForm.Controls.Add($objListbox) 
-
-  $objForm.Add_Shown({$objForm.Activate()})
-
-  [void] $objForm.ShowDialog()
-
-  if ( $objForm.DialogResult -eq "OK" ) {
-
-    $renameInfos = @()
-    for ( $i = 0; $i -lt $objListbox.RowCount; $i ++ )
+  $RenameFunction = {
+    Class ResourceProfile
     {
-      $renameInfo = New-Object ResourceProfile
-      $renameInfo.ResourceType = $objListbox.Rows[$i].Cells[0].Value
-      $renameInfo.SourceResourceGroup = $objListbox.Rows[$i].Cells[1].Value
-      $renameInfo.DestinationResourceGroup = $objListbox.Rows[$i].Cells[2].Value
-      $renameInfo.SourceName = $objListbox.Rows[$i].Cells[3].Value
-      $renameInfo.DestinationName = $objListbox.Rows[$i].Cells[4].Value
-    
-      $renameInfos += $renameInfo
+      [String] $ResourceType
+      [String] $SourceResourceGroup
+      [String] $DestinationResourceGroup
+      [String] $SourceName
+      [String] $DestinationName
     }
 
-    $objForm.Dispose()
-  }
-  else
-  {
-    $objForm.Dispose()
-    Break
-  }
+    Function Rename {
+      Param(
+        [Parameter(Mandatory=$True)]
+        [AllowNull()]
+        [Object[]] 
+        $vmResources
+      )
+      Add-Type -AssemblyName System.Windows.Forms
+      Add-Type -AssemblyName System.Drawing
+      $objForm = New-Object System.Windows.Forms.Form 
+      $objForm.Text = "Azure Global Connection Center"
+      $objForm.Size = New-Object System.Drawing.Size(800,600) 
+      $objForm.StartPosition = "CenterScreen"
 
+      $objForm.KeyPreview = $True
+      $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
+          {
+            $objForm.DialogResult = "OK"
+            $objForm.Close()
+          }
+      })
+
+      $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
+      {$objForm.Close()}})
+
+      $objForm.BackColor = "#1F4E79"
+
+      $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
+      $OKButton = New-Object System.Windows.Forms.Button
+      $OKButton.Location = New-Object System.Drawing.Size(10,500)
+      $OKButton.Size = New-Object System.Drawing.Size(180,40)
+      $OKButton.Text = "OK"
+      $OKButton.Font = $Buttonfont
+      $OKButton.BackColor = "Gainsboro"
+
+      $OKButton.Add_Click(
+        {    
+          $objForm.DialogResult = "OK"
+          $objForm.Close()
+      })
+
+      $objForm.Controls.Add($OKButton)
+
+      $CancelButton = New-Object System.Windows.Forms.Button
+      $CancelButton.Location = New-Object System.Drawing.Size(200,500)
+      $CancelButton.Size = New-Object System.Drawing.Size(180,40)
+      $CancelButton.Text = "Cancel"
+      $CancelButton.Font = $Buttonfont
+      $CancelButton.BackColor = "Gainsboro"
+
+      $CancelButton.Add_Click({$objForm.Close()})
+      $objForm.Controls.Add($CancelButton)
+
+      $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
+      $objLabel = New-Object System.Windows.Forms.Label
+      $objLabel.Location = New-Object System.Drawing.Size(10,20) 
+      $objLabel.AutoSize = $True
+      $objLabel.BackColor = "Transparent"
+      $objLabel.ForeColor = "White"
+      $objLabel.Font = $objFont
+      $objLabel.Text = "Please Rename Following Resources"
+      $objForm.Controls.Add($objLabel) 
+
+      $objListbox = New-Object System.Windows.Forms.DataGridView -Property @{
+        ColumnHeadersVisible = $true
+        RowHeadersVisible = $false
+        location = New-Object System.Drawing.Size(10,70)
+        Size = New-Object System.Drawing.Size(750,420)
+        AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+        EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
+        Height = 320
+        Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
+        AllowUserToAddRows = $false
+      }
+
+      $objListbox.ColumnCount = 5
+
+      $objListbox.EnableHeadersVisualStyles = $false
+      $objListbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
+      $objListbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
+  
+      $objListbox.Columns[0].Name = "ResourceType"
+      $objListbox.Columns[0].ReadOnly = $True
+      $objListbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
+
+      $objListbox.Columns[1].Name = "SoureResourceGroup"
+      $objListbox.Columns[1].ReadOnly = $True
+      $objListbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
+  
+      $objListbox.Columns[2].Name = "DestinationResourceGroup"
+      $objListbox.Columns[2].DefaultCellStyle.BackColor = "White"
+
+      $objListbox.Columns[3].Name = "SourceName"
+      $objListbox.Columns[3].ReadOnly = $True
+      $objListbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
+  
+      $objListbox.Columns[4].Name = "DestinationName"
+      $objListbox.Columns[4].DefaultCellStyle.BackColor = "White"
+
+      $vmResources | ForEach { $objListbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceResourceGroup, $_.SourceName, $_.SourceName )  } | Out-Null
+
+  
+      $objForm.Controls.Add($objListbox) 
+
+      $objForm.Add_Shown({$objForm.Activate()})
+
+      [void] $objForm.ShowDialog()
+
+      if ( $objForm.DialogResult -eq "OK" ) {
+
+        $renameInfos = @()
+        for ( $i = 0; $i -lt $objListbox.RowCount; $i ++ )
+        {
+          $renameInfo = New-Object ResourceProfile
+          $renameInfo.ResourceType = $objListbox.Rows[$i].Cells[0].Value
+          $renameInfo.SourceResourceGroup = $objListbox.Rows[$i].Cells[1].Value
+          $renameInfo.DestinationResourceGroup = $objListbox.Rows[$i].Cells[2].Value
+          $renameInfo.SourceName = $objListbox.Rows[$i].Cells[3].Value
+          $renameInfo.DestinationName = $objListbox.Rows[$i].Cells[4].Value
+    
+          $renameInfos += $renameInfo
+        }
+
+        $objForm.Dispose()
+      }
+      else
+      {
+        $objForm.Dispose()
+        Break
+      }
+
+      return $renameInfos
+    }
+  }
+  $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
+  $result = $job | Receive-Job -Wait -AutoRemoveJob
+
+  $renameInfos = @()
+  $result | ForEach { 
+    $renameInfo = New-Object ResourceProfile;
+    $renameInfo.ResourceType = $_.ResourceType;
+    $renameInfo.SourceResourceGroup = $_.SourceResourceGroup;
+    $renameInfo.DestinationResourceGroup = $_.DestinationResourceGroup;
+    $renameInfo.SourceName = $_.SourceName;
+    $renameInfo.DestinationName = $_.DestinationName;
+    $renameInfos += $renameInfo;
+    }
   return $renameInfos
+
+
 }
 
 function Start-AzureRmVMMigration
@@ -2150,6 +2185,119 @@ function Start-AzureRmVMMigration
   }
 
   ##Form for GUI input
+  $showform = {
+    Function Show-Form
+    {
+      Param(
+        [Parameter(Mandatory=$True)]
+        [String] $title,
+
+        [Parameter(Mandatory=$True)]
+        [String[]] $options,
+
+        [Switch]
+        $MultipleChoice
+      )
+      Add-Type -AssemblyName System.Windows.Forms
+      Add-Type -AssemblyName System.Drawing
+
+      $objForm = New-Object System.Windows.Forms.Form 
+      $objForm.Text = "Azure Global Connection Center"
+      $objForm.Size = New-Object System.Drawing.Size(700,500) 
+      $objForm.StartPosition = "CenterScreen"
+
+      $objForm.KeyPreview = $True
+
+      $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
+          {
+            $objForm.DialogResult = "OK"
+            $objForm.Close()
+          }
+      })
+
+      $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
+      {$objForm.Close()}})
+
+      $objForm.BackColor = "#1F4E79"
+
+      $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
+      $OKButton = New-Object System.Windows.Forms.Button
+      $OKButton.Location = New-Object System.Drawing.Size(10,400)
+      $OKButton.Size = New-Object System.Drawing.Size(180,40)
+      $OKButton.Text = "OK"
+      $OKButton.Font = $Buttonfont
+      $OKButton.BackColor = "Gainsboro"
+
+      $OKButton.Add_Click(
+        {    
+          $objForm.DialogResult = "OK"
+          $objForm.Close()
+      })
+
+      $objForm.Controls.Add($OKButton)
+
+      $CancelButton = New-Object System.Windows.Forms.Button
+      $CancelButton.Location = New-Object System.Drawing.Size(200,400)
+      $CancelButton.Size = New-Object System.Drawing.Size(180,40)
+      $CancelButton.Text = "Cancel"
+      $CancelButton.Font = $Buttonfont
+      $CancelButton.BackColor = "Gainsboro"
+
+      $CancelButton.Add_Click({$objForm.Close()})
+      $objForm.Controls.Add($CancelButton)
+
+      $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
+      $objLabel = New-Object System.Windows.Forms.Label
+      $objLabel.Location = New-Object System.Drawing.Size(10,20) 
+      $objLabel.AutoSize = $True
+      $objLabel.BackColor = "Transparent"
+      $objLabel.ForeColor = "White"
+      $objLabel.Font = $objFont
+      $objLabel.Text = $title
+      $objForm.Controls.Add($objLabel) 
+
+      $objListbox = New-Object System.Windows.Forms.Listbox 
+      $objListbox.Location = New-Object System.Drawing.Size(10,70) 
+      $objListbox.Size = New-Object System.Drawing.Size(650,30) 
+
+      if($MultipleChoice)
+      {
+        $objListbox.SelectionMode = "MultiExtended"
+      }
+
+      foreach ( $option in $options ) {
+        [void] $objListbox.Items.Add($option)
+      }
+
+      $objlistfont = New-Object System.Drawing.Font("Arial",14,[System.Drawing.FontStyle]::Regular)
+      $objListbox.Font = $objlistfont
+      $objListbox.Height = 320
+      $objForm.Controls.Add($objListbox) 
+
+
+      $objForm.Add_Shown({$objForm.Activate()})
+      [void] $objForm.ShowDialog()
+      if ( $objForm.DialogResult -eq "OK" ) {
+
+        $responses = @()
+        foreach ( $selection in $objListbox.SelectedItems ) {
+          $responses+= $selection
+        }
+
+        $objForm.Dispose()
+
+      }
+
+      if ($responses.Count -eq 0)
+      {
+        $objForm.Dispose()
+        Break
+      }
+
+      return $responses
+    }
+  }
+
   Function SelectionBox
   {
     Param(
@@ -2162,104 +2310,14 @@ function Start-AzureRmVMMigration
       [Switch]
       $MultipleChoice
     )
- 
-    [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-    [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
-
-    $objForm = New-Object System.Windows.Forms.Form 
-    $objForm.Text = "Azure Global Connection Center"
-    $objForm.Size = New-Object System.Drawing.Size(700,500) 
-    $objForm.StartPosition = "CenterScreen"
-
-    $objForm.KeyPreview = $True
-
-    $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
-        {
-          $objForm.DialogResult = "OK"
-          $objForm.Close()
-        }
-    })
-
-    $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
-    {$objForm.Close()}})
-
-    $objForm.BackColor = "#1F4E79"
-
-    $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
-    $OKButton = New-Object System.Windows.Forms.Button
-    $OKButton.Location = New-Object System.Drawing.Size(10,400)
-    $OKButton.Size = New-Object System.Drawing.Size(180,40)
-    $OKButton.Text = "OK"
-    $OKButton.Font = $Buttonfont
-    $OKButton.BackColor = "Gainsboro"
-
-    $OKButton.Add_Click(
-      {    
-        $objForm.DialogResult = "OK"
-        $objForm.Close()
-    })
-
-    $objForm.Controls.Add($OKButton)
-
-    $CancelButton = New-Object System.Windows.Forms.Button
-    $CancelButton.Location = New-Object System.Drawing.Size(200,400)
-    $CancelButton.Size = New-Object System.Drawing.Size(180,40)
-    $CancelButton.Text = "Cancel"
-    $CancelButton.Font = $Buttonfont
-    $CancelButton.BackColor = "Gainsboro"
-
-    $CancelButton.Add_Click({$objForm.Close()})
-    $objForm.Controls.Add($CancelButton)
-
-    $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
-    $objLabel = New-Object System.Windows.Forms.Label
-    $objLabel.Location = New-Object System.Drawing.Size(10,20) 
-    $objLabel.AutoSize = $True
-    $objLabel.BackColor = "Transparent"
-    $objLabel.ForeColor = "White"
-    $objLabel.Font = $objFont
-    $objLabel.Text = $title
-    $objForm.Controls.Add($objLabel) 
-
-    $objListbox = New-Object System.Windows.Forms.Listbox 
-    $objListbox.Location = New-Object System.Drawing.Size(10,70) 
-    $objListbox.Size = New-Object System.Drawing.Size(650,30) 
-
-    if($MultipleChoice)
-    {
-      $objListbox.SelectionMode = "MultiExtended"
+    if($MultipleChoice){
+        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1] -MultipleChoice $args[2]} -ArgumentList $title,$options,$MultipleChoice
     }
-
-    foreach ( $option in $options ) {
-      [void] $objListbox.Items.Add($option)
+    else{
+        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1]} -ArgumentList $title,$options
     }
-
-    $objlistfont = New-Object System.Drawing.Font("Arial",14,[System.Drawing.FontStyle]::Regular)
-    $objListbox.Font = $objlistfont
-    $objListbox.Height = 320
-    $objForm.Controls.Add($objListbox) 
-
-
-    $objForm.Add_Shown({$objForm.Activate()})
-    [void] $objForm.ShowDialog()
-    if ( $objForm.DialogResult -eq "OK" ) {
-
-      $responses = @()
-      foreach ( $selection in $objListbox.SelectedItems ) {
-        $responses+= $selection
-      }
-
-      $objForm.Dispose()
-
-    }
-
-    if ($responses.Count -eq 0)
-    {
-      $objForm.Dispose()
-      Break
-    }
-
-    return $responses
+    $result = $job | Receive-Job -Wait -AutoRemoveJob
+    return $result
   }
   
 
