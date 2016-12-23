@@ -173,9 +173,25 @@ foreach($dataDisk in $vm.StorageProfile.DataDisks)
 
 
 ####Rename Function####
-[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
+$RenameFunction = {
+Class ResourceProfile
+{
+   [String] $ResourceType
+   [String] $SourceResourceGroup
+   [String] $DestinationResourceGroup
+   [String] $SourceName
+   [String] $DestinationName
+}
 
+Function Rename {
+Param(
+    [Parameter(Mandatory=$True)]
+    [AllowNull()]
+    [Object[]] 
+    $vmResources
+)
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
 $objForm = New-Object System.Windows.Forms.Form 
 $objForm.Text = "Azure Global Connection Center"
 $objForm.Size = New-Object System.Drawing.Size(800,600) 
@@ -298,4 +314,20 @@ else
   Break
 }
 
+return $renameInfos
+}
+}
+$job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
+$result = $job | Receive-Job -Wait -AutoRemoveJob
+
+$renameInfos = @()
+$result | ForEach { 
+    $renameInfo = New-Object ResourceProfile;
+    $renameInfo.ResourceType = $_.ResourceType;
+    $renameInfo.SourceResourceGroup = $_.SourceResourceGroup;
+    $renameInfo.DestinationResourceGroup = $_.DestinationResourceGroup;
+    $renameInfo.SourceName = $_.SourceName;
+    $renameInfo.DestinationName = $_.DestinationName;
+    $renameInfos += $renameInfo;
+    }
 return $renameInfos

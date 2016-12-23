@@ -105,7 +105,8 @@
   }
 
   ##Form for GUI input
-  Function SelectionBox
+  $showform = {
+  Function Show-Form
   {
     Param(
       [Parameter(Mandatory=$True)]
@@ -117,9 +118,8 @@
       [Switch]
       $MultipleChoice
     )
- 
-    [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-    [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
 
     $objForm = New-Object System.Windows.Forms.Form 
     $objForm.Text = "Azure Global Connection Center"
@@ -216,7 +216,29 @@
 
     return $responses
   }
-  
+  }
+
+  Function SelectionBox
+  {
+    Param(
+      [Parameter(Mandatory=$True)]
+      [String] $title,
+
+      [Parameter(Mandatory=$True)]
+      [String[]] $options,
+
+      [Switch]
+      $MultipleChoice
+    )
+    if($MultipleChoice){
+        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1] -MultipleChoice $args[2]} -ArgumentList $title,$options,$MultipleChoice
+    }
+    else{
+        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1]} -ArgumentList $title,$options
+    }
+    $result = $job | Receive-Job -Wait -AutoRemoveJob
+    return $result
+  }
 
   ##Get the parameter if not provided
   Try
