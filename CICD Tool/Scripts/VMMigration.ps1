@@ -276,7 +276,7 @@ Function MigrationTelemetry {
         Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
         $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
         $telemetry.AddOrUpdateEntity($args[1],$args[2],$args[3],$args[4],$args[5],$args[6],$args[7],$args[8])
-    } -ArgumentList $path, $srcContext.Account,$JobId,(ConvertTo-Json $srcContext),(ConvertTo-Json $destContext),(ConvertTo-Json $Script:timeSpanList),$timeSpan,$completed,$succeed | Receive-Job -Wait -AutoRemoveJob
+    } -ArgumentList $path, $srcContext.Account,$JobId,(ConvertTo-Json $srcContext),(ConvertTo-Json $destContext),(ConvertTo-Json $vmProfile),(ConvertTo-Json $Script:timeSpanList),$completed,$succeed | Receive-Job -Wait -AutoRemoveJob
 
 }
   ##Get the parameter if not provided
