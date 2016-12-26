@@ -105,7 +105,7 @@
   }
 
   ##Form for GUI input
-  $showform = {
+  $showFormCode = {
   Function Show-Form
   {
     Param(
@@ -231,15 +231,54 @@
       $MultipleChoice
     )
     if($MultipleChoice){
-        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1] -MultipleChoice $args[2]} -ArgumentList $title,$options,$MultipleChoice
+        $job = Start-Job -InitializationScript $showFormCode -ScriptBlock {Show-Form -title $args[0] -options $args[1] -MultipleChoice} -ArgumentList $title,$options
     }
-    else{
-        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1]} -ArgumentList $title,$options
+    else {
+        $job = Start-Job -InitializationScript $showFormCode -ScriptBlock {Show-Form -title $args[0] -options $args[1]} -ArgumentList $title,$options
     }
     $result = $job | Receive-Job -Wait -AutoRemoveJob
     return $result
   }
+  Function IIf($If, $IfTrue, $IfFalse) {
+    If ($If) {If ($IfTrue -is "ScriptBlock") {&$IfTrue} Else {$IfTrue}}
+    Else {If ($IfFalse -is "ScriptBlock") {&$IfFalse} Else {$IfFalse}}
+  }
+$JobId = New-Guid | %{ $_.Guid }
+$Script:timeSpanList = @()
+Function MigrationTelemetry {
+    Param(
+          [Parameter(Mandatory=$True)]
+          [PSObject] $srcContext,
 
+          [Parameter(Mandatory=$True)]
+          [PSObject] $destContext,
+
+          [Parameter(Mandatory=$True)]
+          [PSObject] $vmProfile,
+
+          [Parameter(Mandatory=$True)]
+          [PSObject] $phaseName,
+
+          [Switch] $completed,
+
+          [Switch] $succeed
+
+        )
+    $path = Get-Location | %{$_.Path}
+    $currentTime = Get-Date
+    $duration = If ($timeSpanList.Count -eq 0) {0} else {($currentTime - $timeSpanList[$timeSpanList.Count - 1].Time).TotalMinutes}
+    $timeSpan = New-Object –TypeName PSObject
+    $timeSpan | Add-Member –MemberType NoteProperty –Name PhaseName –Value $phaseName
+    $timeSpan | Add-Member –MemberType NoteProperty –Name Time –Value $currentTime
+    $timeSpan | Add-Member –MemberType NoteProperty –Name TotalMinutes –Value $duration
+    $Script:timeSpanList += $timeSpan
+    Start-Job -ScriptBlock {
+        Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
+        $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
+        $telemetry.AddOrUpdateEntity($args[1],$args[2],$args[3],$args[4],$args[5],$args[6],$args[7],$args[8])
+    } -ArgumentList $path, $srcContext.Account,$JobId,(ConvertTo-Json $srcContext),(ConvertTo-Json $destContext),(ConvertTo-Json $Script:timeSpanList),$timeSpan,$completed,$succeed | Receive-Job -Wait -AutoRemoveJob
+
+}
   ##Get the parameter if not provided
   Try
   {
@@ -269,6 +308,7 @@
       Select-AzureRmSubscription -SubscriptionName $Subscription | Out-Null
 
       $SrcContext = Get-AzureRmContext
+      MigrationTelemetry -srcContext $SrcContext -destContext null -vmProfile null -phaseName "Migration Started" -succeed
     }
 
 
@@ -365,11 +405,12 @@
     {
       $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext
     }
-
+    MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Parameters input succeed" -succeed
   }
   Catch
   {
     Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+    MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Parameters input failed" -completed
     Throw "Input Parameters are not set correctly. Please try again."
   }
 
@@ -388,8 +429,10 @@
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Validation Only failed" -completed
         Throw "Validation Failed. Please check the error message and try again."
       }
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Validation Only Succeeded" -completed -succeed
       return $validationResult
     }
 
@@ -403,9 +446,11 @@
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Prepare Only failed" -completed
         Throw "Preparation Failed. Please check the error message and try again."
       }
-      break
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Prepare Only Succeeded" -completed -succeed
+      return
     }
 
     ##VHD Copy Only
@@ -418,8 +463,10 @@
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VHD Copy Only failed" -completed
         Throw "Vhd Copy Failed. Please check the error message and try again."
       }
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VHD Copy Only Succeeded" -completed -succeed
       return $diskUris
     }
 
@@ -438,8 +485,11 @@
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild Only failed" -completed
         Throw "VM Building Failed. Please check the error message and try again."
       } 
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild Only Succeeded" -completed -succeed
+      return
     }
     
     #Rename Only
@@ -452,9 +502,10 @@
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Rename Only failed" -completed
         Throw "Rename Failed. Please check the error message and try again."
       }
-      
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Rename Only Succeeded" -completed -succeed
       return $RenameInfos
     }
   }
@@ -469,48 +520,58 @@
     Try
     {
       $validationResult = .\Validate.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "validation succeed" -succeed
     }
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "validation Failed" -completed
       Throw "Validation Failed. Please check the error message and try again."
     }
     
     if ($validationResult.Result -eq "Failed")
     {
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "validation Failed" -completed
       return $validationResult
     }
   
     Try
     {
       .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation succeed" -succeed
     }
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation Failed" -completed
       Throw "Preparation Failed. Please check the error message and try again."
     }
     
     Try
     {
       $diskUris = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "CopyVhds succeed" -succeed
     }
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "CopyVhds Failed" -completed
       Throw "Vhd Copy Failed. Please check the error message and try again."
     }
     
     Try
     {
       .\VMBuild.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris -RenameInfos $RenameInfos
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild succeed" -succeed
     }
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild Failed" -completed
       Throw "VM Building Failed. Please check the error message and try again."
     }
     Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Succeeded" -percentComplete 100
+    MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Migration Succeeded" -completed -succeed
   
     return ("VM: " + $vm.Name +  " Migration Succeeded.")
   }
