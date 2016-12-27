@@ -299,7 +299,7 @@ Function MigrationTelemetry {
       $dic.Add(($_.phaseName+"TimeSpan"),$_.TimeSpan);
       $dic.Add(($_.phaseName+"Status"),$_.Status);
     }
-    $dic
+
     Start-Job -ScriptBlock {
         Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
         $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
