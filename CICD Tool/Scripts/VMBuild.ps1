@@ -593,7 +593,7 @@ For($k = 1; $k -le 5 ; $k++ )
 
   Write-Progress -id 30 -ParentId 0 -activity "Building VM" -status "Deploying VM" -percentComplete $progressPercentage
 }
-
+MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild" -succeed
 
 ####Validate the VM Deployment####
 Set-AzureRmContext -Context $DestContext | Out-Null
@@ -614,7 +614,8 @@ else
 {
   $templatepath = $Env:TEMP + "\AzureMigrationtool\$tempId"
   Remove-Item $templatepath* -Force -Recurse
-
+  MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PostValidate" -completed
   Throw "The VM Migration is Failed."
 }
 
+MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PostValidate" -completed -succeed
