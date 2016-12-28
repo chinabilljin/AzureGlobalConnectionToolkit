@@ -280,6 +280,7 @@ Function MigrationTelemetry {
         }
         ($dateTime - $lastPhaseDateTime).TotalSeconds.ToString("F1")
     }
+
     $timeSpan = New-Object –TypeName PSObject 
     $timeSpan | Add-Member –MemberType NoteProperty –Name PhaseName –Value $phaseName 
     $timeSpan | Add-Member –MemberType NoteProperty –Name PhaseStatus –Value $phaseStatus
@@ -308,7 +309,7 @@ Function MigrationTelemetry {
     $dic.Add("VmNumberOfDataDisk",$vmProfile.StorageProfile.DataDisks.Count)
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $true} | %{$dic.Add("VmOsDiskSzie",$_.BlobActualBytes)}
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $false} | %{$dic.Add(("VmDataDisk"+$_.Lun+"Size"),$_.BlobActualBytes)}
-    $Global:timeSpanList | Where-Object {$_.phaseName -ne ""} | %{
+    $Global:timeSpanList | Where-Object {$_.phaseName -ne ""} | Where-Object {$_.phaseStatus -ne "Started"} | %{
       $dic.Add(($_.phaseName+"TimeSpan"),$_.TimeSpan);
       $dic.Add(($_.phaseName+"Status"),$_.PhaseStatus);
     }
