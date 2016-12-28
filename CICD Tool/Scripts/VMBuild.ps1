@@ -74,6 +74,7 @@ Class ResourceProfile
    [String] $DestinationResourceGroup
    [String] $SourceName
    [String] $DestinationName
+   [String] $DnsName
 }
 
 
@@ -289,61 +290,90 @@ ForEach ( $resource in $vmResources )
   
   if ( $resourcecheck -eq $null ) {
 
-    if ($resource.ResourceType -eq 'virtualMachines')
+    switch ($resource.ResourceType)
     {
-      $c = $SrcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match "Microsoft.Compute/virtualMachines") }
-
-      if ($c -eq $null)
+      'virtualMachines'
       {
-        Throw ("Cannot find the virtual machine " + $resource.SourceName + " in source subscription.")
-      }
+        $c = $SrcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match "Microsoft.Compute/virtualMachines") }
 
-      $crspropstorprofile = New-Object PSObject
-      $crspropstorprofile | Add-Member -Name "osDisk" -MemberType NoteProperty -Value ($c.properties.storageProfile.osdisk | Select-Object -Property * -ExcludeProperty image)
-      $crspropstorprofile | Add-Member -Name "dataDisks" -MemberType NoteProperty -Value $c.properties.storageProfile.dataDisks
-      $crspropstorprofile.osdisk.createOption = "Attach"
-
-      $ostype = $vm.StorageProfile.OsDisk.OsType.ToString()
-    
-      $crspropstorprofile.osdisk | Add-Member -Name "osType" -MemberType NoteProperty -Value $ostype -Force
-
-      $crspropstorprofile.osdisk.vhd.uri = $osDiskUri
-    
-      if ($crspropstorprofile.dataDisks.count -ne 0) {
-        foreach ($d in $crspropstorprofile.dataDisks) {
-          $d.createOption = "Attach"
-          $d.vhd.uri = $dataDiskUris[$d.lun]
+        if ($c -eq $null)
+        {
+          Throw ("Cannot find the virtual machine " + $resource.SourceName + " in source subscription.")
         }
+
+        $crspropstorprofile = New-Object PSObject
+        $crspropstorprofile | Add-Member -Name "osDisk" -MemberType NoteProperty -Value ($c.properties.storageProfile.osdisk | Select-Object -Property * -ExcludeProperty image)
+        $crspropstorprofile | Add-Member -Name "dataDisks" -MemberType NoteProperty -Value $c.properties.storageProfile.dataDisks
+        $crspropstorprofile.osdisk.createOption = "Attach"
+
+        $ostype = $vm.StorageProfile.OsDisk.OsType.ToString()
+    
+        $crspropstorprofile.osdisk | Add-Member -Name "osType" -MemberType NoteProperty -Value $ostype -Force
+
+        $crspropstorprofile.osdisk.vhd.uri = $osDiskUri
+    
+        if ($crspropstorprofile.dataDisks.count -ne 0) {
+          foreach ($d in $crspropstorprofile.dataDisks) {
+            $d.createOption = "Attach"
+            $d.vhd.uri = $dataDiskUris[$d.lun]
+          }
+        }
+
+        $crsprop = New-Object PSObject
+        $crsprop | Add-Member -Name "hardwareProfile" -MemberType NoteProperty -Value $c.properties.hardwareProfile
+        $crsprop | Add-Member -Name "storageProfile" -MemberType NoteProperty -Value $crspropstorprofile
+        $crsprop | Add-Member -Name "networkProfile" -MemberType NoteProperty -Value $c.properties.networkProfile
+
+        if (!($c.properties.availabilitySet -eq $null)) {
+          $crsprop | Add-Member -Name "availabilitySet" -MemberType NoteProperty -Value $c.properties.availabilitySet
+        }
+
+        $crsDeps = @()
+
+        $crs = New-Object PSObject
+        $crs | Add-Member -Name "type" -MemberType NoteProperty -Value $c.type
+        $crs | Add-Member -Name "name" -MemberType NoteProperty -Value $c.name
+        $crs | Add-Member -Name "apiVersion" -MemberType NoteProperty -Value $c.apiVersion
+        $crs | Add-Member -Name "location" -MemberType NoteProperty -Value $targetLocation
+        $crs | Add-Member -Name "tags" -MemberType NoteProperty -Value $c.tags
+        $crs | Add-Member -Name "properties" -MemberType NoteProperty -Value $crsprop
+        $crs | Add-Member -Name "dependsOn" -MemberType NoteProperty -Value $crsDeps
+
+        $destResourceList.$destRg.Phase5 += $crs
       }
-
-      $crsprop = New-Object PSObject
-      $crsprop | Add-Member -Name "hardwareProfile" -MemberType NoteProperty -Value $c.properties.hardwareProfile
-      $crsprop | Add-Member -Name "storageProfile" -MemberType NoteProperty -Value $crspropstorprofile
-      $crsprop | Add-Member -Name "networkProfile" -MemberType NoteProperty -Value $c.properties.networkProfile
-
-      if (!($c.properties.availabilitySet -eq $null)) {
-        $crsprop | Add-Member -Name "availabilitySet" -MemberType NoteProperty -Value $c.properties.availabilitySet
+      'publicIPAddresses'
+      {
+        $targetresource = $srcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match $resource.ResourceType) }
+        $targetresource.location = $targetLocation
+        $targetresource.dependsOn = @()
+        
+        if ($targetResource.properties.dnsSettings -eq $null)
+        {
+          $dnsSettings = New-Object PSObject
+          $dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName
+          $targetResource.properties | Add-Member -MemberType NoteProperty -Name dnsSettings -Value $dnsSettings
+        }
+        else
+        {
+          if ($targetResource.properties.dnsSettings.domainNameLabel -eq $null)
+          {
+            $targetResource.properties.dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName
+          }
+          else
+          {
+            $targetResource.properties.dnsSettings.domainNameLabel = $resource.DnsName
+          }
+        }
+        
+        $destResourceList.$destRg.$phase += $targetresource      
+      }    
+      default
+      {
+        $targetresource = $srcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match $resource.ResourceType) }
+        $targetresource.location = $targetLocation
+        $targetresource.dependsOn = @()
+        $destResourceList.$destRg.$phase += $targetresource
       }
-
-      $crsDeps = @()
-
-      $crs = New-Object PSObject
-      $crs | Add-Member -Name "type" -MemberType NoteProperty -Value $c.type
-      $crs | Add-Member -Name "name" -MemberType NoteProperty -Value $c.name
-      $crs | Add-Member -Name "apiVersion" -MemberType NoteProperty -Value $c.apiVersion
-      $crs | Add-Member -Name "location" -MemberType NoteProperty -Value $targetLocation
-      $crs | Add-Member -Name "tags" -MemberType NoteProperty -Value $c.tags
-      $crs | Add-Member -Name "properties" -MemberType NoteProperty -Value $crsprop
-      $crs | Add-Member -Name "dependsOn" -MemberType NoteProperty -Value $crsDeps
-
-      $destResourceList.$destRg.Phase5 += $crs
-    }
-    else
-    {
-      $targetresource = $srcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match $resource.ResourceType) }
-      $targetresource.location = $targetLocation
-      $targetresource.dependsOn = @()
-      $destResourceList.$destRg.$phase += $targetresource
     }  
   }
 }

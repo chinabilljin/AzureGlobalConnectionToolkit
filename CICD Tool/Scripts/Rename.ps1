@@ -33,6 +33,7 @@ Class ResourceProfile
    [String] $DestinationResourceGroup
    [String] $SourceName
    [String] $DestinationName
+   [String] $DnsName
 }
 
 Function Add-ResourceList
@@ -51,6 +52,11 @@ Function Add-ResourceList
    
    if ( $resourceCheck -eq $null )
    {
+     if ($resource.ResourceType -eq "publicIPAddresses")
+     {
+       $pip = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
+       $resource.DnsName = $pip.DnsSettings.DomainNameLabel
+     }
      $Script:vmResources += $resource
    }
 }
@@ -182,6 +188,7 @@ $RenameFunction =
     [String] $DestinationResourceGroup
     [String] $SourceName
     [String] $DestinationName
+    [String] $DnsName
   }
 
   Function Rename {
@@ -244,14 +251,24 @@ $RenameFunction =
     $objLabel.BackColor = "Transparent"
     $objLabel.ForeColor = "White"
     $objLabel.Font = $objFont
-    $objLabel.Text = "Please Rename Following Resources"
+    $objLabel.Text = "Please Check the Name of Following Resources"
     $objForm.Controls.Add($objLabel) 
+
+    $objFont2 = New-Object System.Drawing.Font("Arial",10,[System.Drawing.FontStyle]::Regular)
+    $objLabel2 = New-Object System.Windows.Forms.Label
+    $objLabel2.Location = New-Object System.Drawing.Size(10,55) 
+    $objLabel2.AutoSize = $True
+    $objLabel2.BackColor = "Transparent"
+    $objLabel2.ForeColor = "LightSteelBlue"
+    $objLabel2.Font = $objFont2
+    $objLabel2.Text = "Resource List"
+    $objForm.Controls.Add($objLabel2) 
 
     $objListbox = New-Object System.Windows.Forms.DataGridView -Property @{
       ColumnHeadersVisible = $true
       RowHeadersVisible = $false
-      location = New-Object System.Drawing.Size(10,70)
-      Size = New-Object System.Drawing.Size(750,420)
+      location = New-Object System.Drawing.Size(10,80)
+      Size = New-Object System.Drawing.Size(750,220)
       AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
       EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
       Height = 320
@@ -284,9 +301,58 @@ $RenameFunction =
     $objListbox.Columns[4].DefaultCellStyle.BackColor = "White"
 
     $vmResources | ForEach { $objListbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceResourceGroup, $_.SourceName, $_.SourceName )  } | Out-Null
-
   
     $objForm.Controls.Add($objListbox) 
+    
+    $objLabel3 = New-Object System.Windows.Forms.Label
+    $objLabel3.Location = New-Object System.Drawing.Size(10,325) 
+    $objLabel3.AutoSize = $True
+    $objLabel3.BackColor = "Transparent"
+    $objLabel3.ForeColor = "LightSteelBlue"
+    $objLabel3.Font = $objFont2
+    $objLabel3.Text = "DNS Name List"
+    $objForm.Controls.Add($objLabel3) 
+        
+    $objDnsbox = New-Object System.Windows.Forms.DataGridView -Property @{
+      ColumnHeadersVisible = $true
+      RowHeadersVisible = $false
+      location = New-Object System.Drawing.Size(10,350)
+      Size = New-Object System.Drawing.Size(750,100)
+      AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+      EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
+      Height = 320
+      Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
+      AllowUserToAddRows = $false
+    }
+    
+    $objDnsbox.ColumnCount = 5
+
+    $objDnsbox.EnableHeadersVisualStyles = $false
+    $objDnsbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
+    $objDnsbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
+  
+    $objDnsbox.Columns[0].Name = "ResourceType"
+    $objDnsbox.Columns[0].ReadOnly = $True
+    $objDnsbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
+
+    $objDnsbox.Columns[1].Name = "SoureResourceGroup"
+    $objDnsbox.Columns[1].ReadOnly = $True
+    $objDnsbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
+
+    $objDnsbox.Columns[2].Name = "SourceName"
+    $objDnsbox.Columns[2].ReadOnly = $True
+    $objDnsbox.Columns[2].DefaultCellStyle.BackColor = "Gainsboro"
+    
+    $objDnsbox.Columns[3].Name = "SourceDNSName"
+    $objDnsbox.Columns[3].ReadOnly = $True
+    $objDnsbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
+    
+    $objDnsbox.Columns[4].Name = "DestinationDNSName"
+    $objDnsbox.Columns[4].DefaultCellStyle.BackColor = "White"
+    
+    $vmResources | Where-Object {$_.ResourceType -eq "publicIPAddresses"} | ForEach { $objDnsbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceName, $_.DNSName, $_.DNSName )  } | Out-Null
+    
+    $objForm.Controls.Add($objDnsbox)
 
     $objForm.Add_Shown({$objForm.Activate()})
 
@@ -305,6 +371,12 @@ $RenameFunction =
         $renameInfo.DestinationName = $objListbox.Rows[$i].Cells[4].Value
     
         $renameInfos += $renameInfo
+      }
+      
+      for ( $j = 0; $j -lt $objDnsbox.RowCount; $j ++ )
+      {
+        $DnsResource = $renameInfos | Where-Object { ($_.ResourceType -eq "publicIPAddresses") -and ( $_.SourceResourceGroup -eq  $objDnsbox.Rows[$j].Cells[1].Value) -and ($_.SourceName -eq  $objDnsbox.Rows[$j].Cells[2].Value) }
+        $DnsResource.DnsName = $objDnsbox.Rows[$j].Cells[4].Value
       }
 
       $objForm.Dispose()
@@ -347,12 +419,14 @@ While (!$resultValidate)
 
 $renameInfos = @()
 $result | ForEach { 
-    $renameInfo = New-Object ResourceProfile;
-    $renameInfo.ResourceType = $_.ResourceType;
-    $renameInfo.SourceResourceGroup = $_.SourceResourceGroup;
-    $renameInfo.DestinationResourceGroup = $_.DestinationResourceGroup;
-    $renameInfo.SourceName = $_.SourceName;
-    $renameInfo.DestinationName = $_.DestinationName;
-    $renameInfos += $renameInfo;
+    $renameInfo = New-Object ResourceProfile
+    $renameInfo.ResourceType = $_.ResourceType
+    $renameInfo.SourceResourceGroup = $_.SourceResourceGroup
+    $renameInfo.DestinationResourceGroup = $_.DestinationResourceGroup
+    $renameInfo.SourceName = $_.SourceName
+    $renameInfo.DestinationName = $_.DestinationName
+    $renameInfo.DnsName = $_.DnsName
+    
+    $renameInfos += $renameInfo
     }
 return $renameInfos
