@@ -172,6 +172,8 @@ if ( $RenameInfos.Count -ne 0 )
   }
 }
 
+$vm | Add-Member -Name StorageInfos -Value $StorageInfos -MemberType NoteProperty 
+
 ####Start Vhds Copy####
 
 Foreach ( $vhd in $StorageInfos )
@@ -203,6 +205,8 @@ Foreach ( $vhd in $StorageInfos )
    Start-AzureStorageBlobCopy -ICloudBlob $vhd.snapShot -Context $srcStorageContext -DestContainer $vhd.DestContainerName -DestBlob $vhd.DestBlobName -DestContext $destStorageContext | Out-Null
 
 }
+
+MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -phaseStatus Started
 
 ####Copy Status Check###
 $copyComplete = $false
@@ -309,4 +313,4 @@ $diskUris = New-Object PSObject
 $diskUris | Add-Member -Name osDiskUri -Value $osDiskUri -MemberType NoteProperty
 $diskUris | Add-Member -Name dataDiskUris -Value $dataDiskUris -MemberType NoteProperty
 
-return $diskUris
+return $diskUris,$vm
