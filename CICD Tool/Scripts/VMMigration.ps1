@@ -289,7 +289,7 @@ Function MigrationTelemetry {
 
     $Global:timeSpanList += $timeSpan
 
-    #this just record the start, so no table upgrade
+    #just record the start time when phase name was not provided, so no table upgrade
     if($phaseName -eq "") {return}
 
     $dic = @{}
@@ -309,7 +309,7 @@ Function MigrationTelemetry {
     $dic.Add("VmNumberOfDataDisk",$vmProfile.StorageProfile.DataDisks.Count)
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $true} | %{$dic.Add("VmOsDiskSzie",$_.BlobActualBytes)}
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $false} | %{$dic.Add(("VmDataDisk"+$_.Lun+"Size"),$_.BlobActualBytes)}
-    $Global:timeSpanList | Where-Object {$_.phaseName -ne ""} | Where-Object {$_.phaseStatus -ne "Started"} | %{
+    $Global:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | %{
       $dic.Add(($_.phaseName+"TimeSpan"),$_.TimeSpan);
       $dic.Add(($_.phaseName+"Status"),$_.PhaseStatus);
     }
