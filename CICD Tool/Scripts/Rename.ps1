@@ -320,6 +320,30 @@ $RenameFunction =
 }
 $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
 $result = $job | Receive-Job -Wait -AutoRemoveJob
+$resultValidate = $false
+
+While (!$resultValidate)
+{
+  $resultValidate = $True
+
+  foreach ( $r in $result )
+  {
+    if ($r.ResourceType -ne "storageAccounts")
+    {
+      $resultCheck = $result | Where-Object { ($_.ResourceType -eq $r.ResourceType ) -and ( $_.DestinationResourceGroup -eq $r.DestinationResourceGroup ) -and ( $_.DestinationName -eq $r.DestinationName ) }
+      if ( $resultCheck.Count -gt 1 )
+      {
+        Write-Warning ("Name Duplicate: (" + $r.ResourceType + ") Destination Name: " + $r.DestinationName + " Desitnation Resource Group: " + $r.DestinationResourceGroup + " . Please input the destination information again.")
+        $resultValidate = $false
+      }
+    }
+  }
+  if (!$resultValidate)
+  {
+    $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
+    $result = $job | Receive-Job -Wait -AutoRemoveJob
+  }
+}
 
 $renameInfos = @()
 $result | ForEach { 
