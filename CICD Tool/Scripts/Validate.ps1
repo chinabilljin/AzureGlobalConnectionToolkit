@@ -99,7 +99,7 @@
       [String] $storName   
     )
 
-    $storCheck = $vmResources | Where-Object { ($_.Name -eq $storName) -and ($_.ResourceType -eq "storageAccounts" ) }
+    $storCheck = $vmResources | Where-Object { ($_.SourceName -eq $storName) -and ($_.ResourceType -eq "storageAccounts" ) }
 
     if ( $storCheck -eq $null )
     {
