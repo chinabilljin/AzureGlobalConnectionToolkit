@@ -149,9 +149,9 @@
     $OKButton.BackColor = "Gainsboro"
 
     $OKButton.Add_Click(
-    {    
-      $objForm.DialogResult = "OK"
-      $objForm.Close()
+      {    
+        $objForm.DialogResult = "OK"
+        $objForm.Close()
     })
 
     $objForm.Controls.Add($OKButton)
@@ -281,11 +281,11 @@ Function MigrationTelemetry {
         ($dateTime - $lastPhaseDateTime).TotalSeconds.ToString("F1")
     }
 
-    $timeSpan = New-Object –TypeName PSObject 
-    $timeSpan | Add-Member –MemberType NoteProperty –Name PhaseName –Value $phaseName 
-    $timeSpan | Add-Member –MemberType NoteProperty –Name PhaseStatus –Value $phaseStatus
-    $timeSpan | Add-Member –MemberType NoteProperty –Name DateTime –Value $dateTime 
-    $timeSpan | Add-Member –MemberType NoteProperty –Name TimeSpan –Value $duration 
+    $timeSpan = New-Object -TypeName PSObject 
+    $timeSpan | Add-Member -MemberType NoteProperty -Name PhaseName -Value $phaseName 
+    $timeSpan | Add-Member -MemberType NoteProperty -Name PhaseStatus -Value $phaseStatus
+    $timeSpan | Add-Member -MemberType NoteProperty -Name DateTime -Value $dateTime 
+    $timeSpan | Add-Member -MemberType NoteProperty -Name TimeSpan -Value $duration 
 
     $Global:timeSpanList += $timeSpan
 

@@ -347,24 +347,31 @@ ForEach ( $resource in $vmResources )
         $targetresource.location = $targetLocation
         $targetresource.dependsOn = @()
         
-        if ($targetResource.properties.dnsSettings -eq $null)
+        if (!([string]::IsNullOrEmpty($resource.DnsName)))
         {
-          $dnsSettings = New-Object PSObject
-          $dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName
-          $targetResource.properties | Add-Member -MemberType NoteProperty -Name dnsSettings -Value $dnsSettings
-        }
-        else
-        {
-          if ($targetResource.properties.dnsSettings.domainNameLabel -eq $null)
+          if ($targetResource.properties.dnsSettings -eq $null)
           {
-            $targetResource.properties.dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName
+            $dnsSettings = New-Object PSObject
+            $dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName
+            $targetResource.properties | Add-Member -MemberType NoteProperty -Name dnsSettings -Value $dnsSettings
           }
           else
           {
-            $targetResource.properties.dnsSettings.domainNameLabel = $resource.DnsName
+            if ($targetResource.properties.dnsSettings.domainNameLabel -eq $null)
+            {
+              $targetResource.properties.dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName
+            }
+            else
+            {
+              $targetResource.properties.dnsSettings.domainNameLabel = $resource.DnsName
+            }
           }
         }
-        
+        else
+        {
+          $targetResource.properties = $targetResource.properties | Select-Object -Property * -ExcludeProperty "dnsSettings"
+        }
+
         $destResourceList.$destRg.$phase += $targetresource      
       }    
       default
