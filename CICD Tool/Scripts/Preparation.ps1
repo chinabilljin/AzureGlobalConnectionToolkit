@@ -51,7 +51,7 @@ if ($RenameInfos.Count -ne 0)
 {
   ForEach( $RenameInfo in $RenameInfos )
   {
-    if ( $RenameInfo.GetType().FullName -ne "ResourceProfile" )
+    if ( $RenameInfo.GetType().FullName -notmatch "ResourceProfile" )
     {
       Throw "`-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile"
     }

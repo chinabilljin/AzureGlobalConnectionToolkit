@@ -326,12 +326,12 @@ Function MigrationTelemetry {
   {
     if ( $SrcContext -eq $null )
     {
-      $SrcEnv = SelectionBox -title "Please Select the Source Environment" -options ("Global Azure", "Germany Azure", "China Azure")
+      $SrcEnv = SelectionBox -title "Please Select the Source Environment" -options ("Microsoft Azure", "Microsoft Azure in Germany", "Azure in China (operated by 21 vianet)")
       Switch ( $SrcEnv )
       {
-        "China Azure" { $SrcEnvironment = [AzureEnvironment] "AzureChinaCloud" }
-        "Germany Azure" { $SrcEnvironment = [AzureEnvironment] "AzureGermanCloud" }
-        "Global Azure" { $SrcEnvironment = [AzureEnvironment] "AzureCloud" }
+        "Azure in China (operated by 21 vianet)" { $SrcEnvironment = [AzureEnvironment] "AzureChinaCloud" }
+        "Microsoft Azure in Germany" { $SrcEnvironment = [AzureEnvironment] "AzureGermanCloud" }
+        "Microsoft Azure" { $SrcEnvironment = [AzureEnvironment] "AzureCloud" }
       }
 
       [Windows.Forms.MessageBox]::Show("Please Enter " + $SrcEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
@@ -358,12 +358,12 @@ Function MigrationTelemetry {
     {
       if ([string]::IsNullOrEmpty($destEnvironment))
       {
-        $destEnv = SelectionBox -title "Please Select the Destination Environment" -options ("China Azure", "Germany Azure", "Global Azure")
+        $destEnv = SelectionBox -title "Please Select the Destination Environment" -options ("Azure in China (operated by 21 vianet)", "Microsoft Azure in Germany", "Microsoft Azure")
         Switch ( $destEnv )
         {
-          "China Azure" { $destEnvironment = [AzureEnvironment] "AzureChinaCloud" }
+          "Azure in China (operated by 21 vianet)" { $destEnvironment = [AzureEnvironment] "AzureChinaCloud" }
           "Germany Azure" { $destEnvironment = [AzureEnvironment] "AzureGermanCloud" }
-          "Global Azure" { $destEnvironment = [AzureEnvironment] "AzureCloud" }
+          "Microsoft Azure" { $destEnvironment = [AzureEnvironment] "AzureCloud" }
         }
       }
       else
@@ -589,7 +589,7 @@ Function MigrationTelemetry {
     
     Try
     {
-      $diskUris = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      $diskUris,$vm = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
       MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -phaseStatus Succeed
     }
     Catch
