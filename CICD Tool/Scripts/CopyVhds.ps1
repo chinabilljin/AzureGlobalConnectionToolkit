@@ -172,7 +172,6 @@ if ( $RenameInfos.Count -ne 0 )
   }
 }
 
-$vm | Add-Member -Name StorageInfos -Value $StorageInfos -MemberType NoteProperty 
 
 ####Start Vhds Copy####
 
@@ -206,6 +205,7 @@ Foreach ( $vhd in $StorageInfos )
 
 }
 
+$vm | Add-Member -Name StorageInfos -Value $StorageInfos -MemberType NoteProperty
 MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -phaseStatus Started
 
 ####Copy Status Check###
