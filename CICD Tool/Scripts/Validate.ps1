@@ -318,6 +318,10 @@ Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Quota
 Set-AzureRmContext -Context $DestContext | Out-Null
 
 $vmHardwareProfile = Get-AzureRmVmSize -Location $targetLocation | Where-Object{$_.Name -eq $vm.HardwareProfile.VmSize}
+if($vmHardwareProfile -eq $null)
+{
+    Add-ResultList -result "Failed" -detail ("Target location " + $targetLocation + " doesn't have VM type " + $vm.HardwareProfile.VmSize)
+}
 $vmCoreNumber = $vmHardwareProfile.NumberOfCores
 
 $vmCoreFamily = Get-AzureRmVmCoreFamily -VmSize $vm.HardwareProfile.VmSize
@@ -444,7 +448,7 @@ foreach ( $resource in $vmResources)
 Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Complete" -percentComplete 100
 
 $validationResult = New-Object PSObject
-$validationResult | Add-Member -MemberType NoteProperty -Name ValidationResult -Value $Script:result
+$validationResult | Add-Member -MemberType NoteProperty -Name Result -Value $Script:result
 $validationResult | Add-Member -MemberType NoteProperty -Name Messages -Value $Script:resultDetailsList
 
 return $validationResult
