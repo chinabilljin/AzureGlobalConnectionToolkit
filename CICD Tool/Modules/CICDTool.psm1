@@ -429,6 +429,11 @@ function Start-AzureRmVMMigrationValidate
   Set-AzureRmContext -Context $DestContext | Out-Null
 
   $vmHardwareProfile = Get-AzureRmVmSize -Location $targetLocation | Where-Object{$_.Name -eq $vm.HardwareProfile.VmSize}
+  if($vmHardwareProfile -eq $null)
+  {
+    Add-ResultList -result "Failed" -detail ("Target location: " + $targetLocation + " doesn't have VM type: " + $vm.HardwareProfile.VmSize)
+  }
+  
   $vmCoreNumber = $vmHardwareProfile.NumberOfCores
 
   $vmCoreFamily = Get-AzureRmVmCoreFamily -VmSize $vm.HardwareProfile.VmSize
@@ -555,7 +560,7 @@ function Start-AzureRmVMMigrationValidate
   Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Complete" -percentComplete 100
 
   $validationResult = New-Object PSObject
-  $validationResult | Add-Member -MemberType NoteProperty -Name ValidationResult -Value $Script:result
+  $validationResult | Add-Member -MemberType NoteProperty -Name Result -Value $Script:result
   $validationResult | Add-Member -MemberType NoteProperty -Name Messages -Value $Script:resultDetailsList
 
   return $validationResult
@@ -2765,8 +2770,7 @@ function Start-AzureRmVMMigration
 
     Try
     {
-      $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
-      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -phaseStatus Succeed
+      $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos    
     }
     Catch
     {
@@ -2779,6 +2783,10 @@ function Start-AzureRmVMMigration
     {
       MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
       return $validationResult
+    }
+    else
+    {
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -phaseStatus Succeed
     }
   
     Try
