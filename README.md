@@ -97,7 +97,7 @@ customized or integrated into your existing DevOps process.
 
 ### MSI Installer
 
-1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.2.1/AzureGlobalConnectionToolkit.0.2.0.msi) .
+1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.2.1/AzureGlobalConnectionToolkit.0.2.1.msi) .
 2. Run and Install.
 
 You can also find all the previous releases in [Azure Global Connection Toolkit Release](https://github.com/Azure/AzureGlobalConnectionToolkit/releases)
