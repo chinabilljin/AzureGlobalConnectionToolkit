@@ -320,7 +320,7 @@ Set-AzureRmContext -Context $DestContext | Out-Null
 $vmHardwareProfile = Get-AzureRmVmSize -Location $targetLocation | Where-Object{$_.Name -eq $vm.HardwareProfile.VmSize}
 if($vmHardwareProfile -eq $null)
 {
-    Add-ResultList -result "Failed" -detail ("Target location " + $targetLocation + " doesn't have VM type " + $vm.HardwareProfile.VmSize)
+    Add-ResultList -result "Failed" -detail ("Target location: " + $targetLocation + " doesn't have VM type: " + $vm.HardwareProfile.VmSize)
 }
 $vmCoreNumber = $vmHardwareProfile.NumberOfCores
 
