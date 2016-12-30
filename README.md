@@ -50,28 +50,28 @@ customized or integrated into your existing DevOps process.
 ![Connection Toolkit](https://globalconnectioncenter.blob.core.windows.net/githubpics/connectiontoolkit.png)
 
 
-##Features
+## Features
 
-###Assessment Tool
+### Assessment Tool
 
 * Support the assessment from Global Azure to China Azure or Azure Germany.
 * Support the assessment for entire subscription.
 * Support the service parity check.
 * Support most item for cost estimation.
 
-###CICD Tool
+### CICD Tool
 
 * Support ARM VM migration only in current release(no classic VM support).
 * Support migration between different Azure Cloud Environments e.g. Azure Global to Azure China and Azure Germany.
 * Perform pre-migration validation.
-* Support Rename
+* Support rename for resource and DNS.
 * PowerShell scripts based and customizable.
 * Support metadata and configuration migration (no extension support).
 
 
 ## Supported Environments
 
-###Assessment Tool
+### Assessment Tool
 
 * Cloud Environment
   * Microsoft Azure as reference environment 
@@ -81,7 +81,7 @@ customized or integrated into your existing DevOps process.
   * Windows PowerShell 3.0+
   * Internet Connectivity to refernece environment and target environment.
   
-###CICD Tool
+### CICD Tool
 
 * Cloud Environment
   * Microsoft Azure
@@ -95,7 +95,7 @@ customized or integrated into your existing DevOps process.
 
 ## Installation
 
-###MSI Installer
+### MSI Installer
 
 1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.2.0/AzureGlobalConnectionToolkit.0.2.0.msi) .
 2. Run and Install.
@@ -104,7 +104,7 @@ You can also find all the previous releases in [Azure Global Connection Toolkit 
 
 ## Get Started
 
-###Assessment Tool
+### Assessment Tool
 
 After installation, run cmdlet in your PowerShell.
 
@@ -118,7 +118,7 @@ After executing the cmdlet, it will follow the steps to generate report:
 2. Select reference subscription.
 3. Generate the report.
 
-###CICD Tool
+### CICD Tool
 
 After installation, run cmdlet in your PowerShell if you want to perform a migration.
 
@@ -145,10 +145,6 @@ After executing the cmdlet, it will follow the steps to perform VM migration:
 9. Start the VM Migration.
 
 If you want to discover more or customize the script, please visit [CICD Tool](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool)
-
-## Known Issue
-
-If you are using the GUI for CICD tool input in PowerShell ISE environment, the window will freeze occasionally. This is because of some issues between PowerShell ISE and WinForm. Please use PowerShell (not ISE) instead if you encounter this issue.
 
 ## More Guidance
 
