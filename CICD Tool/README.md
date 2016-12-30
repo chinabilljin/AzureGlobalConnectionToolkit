@@ -10,10 +10,10 @@ CICD Tool is designed to solve this problem when customer want their services ca
 
 ### ARM VM Migration
 
-* Support ARM VM Migration from/to Azure, Azure in China and Azure in Germany
-* Support Data Sync through VHD copy
-* Support Validation only mode
-* Support Rename
+* Support ARM VM migration from/to Azure, Azure in China and Azure in Germany.
+* Support data sync through VHD copy.
+* Support validation only mode.
+* Support rename for resource and DNS.
 
 VM migration will be complete through four phases.
 

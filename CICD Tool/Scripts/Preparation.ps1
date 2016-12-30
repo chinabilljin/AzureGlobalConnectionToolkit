@@ -51,7 +51,7 @@ if ($RenameInfos.Count -ne 0)
 {
   ForEach( $RenameInfo in $RenameInfos )
   {
-    if ( $RenameInfo.GetType().FullName -ne "ResourceProfile" )
+    if ( $RenameInfo.GetType().FullName -notmatch "ResourceProfile" )
     {
       Throw "`-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile"
     }
@@ -202,7 +202,7 @@ if ($RenameInfos.Count -eq 0)
   foreach($dataDisk in $vm.StorageProfile.DataDisks)
   {
     $datauri = $dataDisk.Vhd.Uri
-    if ( $osuri -match "https" ) {
+    if ( $datauri -match "https" ) {
     $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
     else {
       $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)

@@ -123,7 +123,7 @@ foreach($dataDisk in $vm.StorageProfile.DataDisks)
    
    Set-AzureRmContext -Context $SrcContext | Out-Null
    $datauri = $dataDisk.Vhd.Uri
-   if ( $osuri -match 'https' ) {
+   if ( $datauri -match 'https' ) {
    $dataDiskInfo.SrcAccountName = $datauri.Substring(8, $datauri.IndexOf('.blob') - 8)}
    else {
     $dataDiskInfo.SrcAccountName = $datauri.Substring(7, $datauri.IndexOf('.blob') - 7)
@@ -172,6 +172,7 @@ if ( $RenameInfos.Count -ne 0 )
   }
 }
 
+
 ####Start Vhds Copy####
 
 Foreach ( $vhd in $StorageInfos )
@@ -203,6 +204,9 @@ Foreach ( $vhd in $StorageInfos )
    Start-AzureStorageBlobCopy -ICloudBlob $vhd.snapShot -Context $srcStorageContext -DestContainer $vhd.DestContainerName -DestBlob $vhd.DestBlobName -DestContext $destStorageContext | Out-Null
 
 }
+
+$vm | Add-Member -Name StorageInfos -Value $StorageInfos -MemberType NoteProperty
+MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -phaseStatus Started
 
 ####Copy Status Check###
 $copyComplete = $false
@@ -309,4 +313,4 @@ $diskUris = New-Object PSObject
 $diskUris | Add-Member -Name osDiskUri -Value $osDiskUri -MemberType NoteProperty
 $diskUris | Add-Member -Name dataDiskUris -Value $dataDiskUris -MemberType NoteProperty
 
-return $diskUris
+return $diskUris,$vm

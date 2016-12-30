@@ -105,7 +105,7 @@
   }
 
   ##Form for GUI input
-  $showform = {
+  $showFormCode = {
   Function Show-Form
   {
     Param(
@@ -149,9 +149,9 @@
     $OKButton.BackColor = "Gainsboro"
 
     $OKButton.Add_Click(
-    {    
-      $objForm.DialogResult = "OK"
-      $objForm.Close()
+      {    
+        $objForm.DialogResult = "OK"
+        $objForm.Close()
     })
 
     $objForm.Controls.Add($OKButton)
@@ -231,26 +231,107 @@
       $MultipleChoice
     )
     if($MultipleChoice){
-        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1] -MultipleChoice $args[2]} -ArgumentList $title,$options,$MultipleChoice
+        $job = Start-Job -InitializationScript $showFormCode -ScriptBlock {Show-Form -title $args[0] -options $args[1] -MultipleChoice} -ArgumentList $title,$options
     }
-    else{
-        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1]} -ArgumentList $title,$options
+    else {
+        $job = Start-Job -InitializationScript $showFormCode -ScriptBlock {Show-Form -title $args[0] -options $args[1]} -ArgumentList $title,$options
     }
     $result = $job | Receive-Job -Wait -AutoRemoveJob
     return $result
   }
 
+$Global:JobId = New-Guid | %{ $_.Guid }
+$Global:timeSpanList = @()
+Function MigrationTelemetry {
+    Param(
+          [Parameter(Mandatory=$true)]
+          [PSObject] $srcContext,
+
+          [Parameter(Mandatory=$false)]
+          [PSObject] $destContext,
+
+          [Parameter(Mandatory=$false)]
+          [PSObject] $vmProfile,
+
+          [Parameter(Mandatory=$false)]
+          [ValidateSet("UserInput", "PreValidation","Preparation", "VhdCopy", "VMBuild", "PostValidate")]
+          [String] $phaseName = "",
+
+          [Parameter(Mandatory=$false)]
+          [ValidateSet("Succeed", "Failed", "Started")]
+          [String] $phaseStatus = "Started",
+
+          [Switch] $completed
+
+        )
+    $path = Get-Location | %{$_.Path}
+
+    #record timespan for each phase
+    $dateTime = Get-Date
+    
+    $duration = If ($timeSpanList.Count -eq 0) {
+        0
+    } else {
+        for($i=$timeSpanList.Count-1;$i -ge 0;$i-- ) {
+            if($timeSpanList[$i].PhaseName -ne $phaseName) {
+                $lastPhaseDateTime = $timeSpanList[$i].DateTime
+                break
+            }
+        }
+        ($dateTime - $lastPhaseDateTime).TotalSeconds.ToString("F1")
+    }
+
+    $timeSpan = New-Object -TypeName PSObject 
+    $timeSpan | Add-Member -MemberType NoteProperty -Name PhaseName -Value $phaseName 
+    $timeSpan | Add-Member -MemberType NoteProperty -Name PhaseStatus -Value $phaseStatus
+    $timeSpan | Add-Member -MemberType NoteProperty -Name DateTime -Value $dateTime 
+    $timeSpan | Add-Member -MemberType NoteProperty -Name TimeSpan -Value $duration 
+
+    $Global:timeSpanList += $timeSpan
+
+    #just record the start time when phase name was not provided, so no table upgrade
+    if($phaseName -eq "") {return}
+
+    $dic = @{}
+    $dic.Add("Completed",$completed.IsPresent)
+    $dic.Add("SrcContext",(ConvertTo-Json $srcContext))
+    $dic.Add("DestContext",(ConvertTo-Json $destContext))
+    $dic.Add("VmProfile",(ConvertTo-Json $vmProfile))
+    $dic.Add("SourceEnvironment",$srcContext.Environment.Name)
+    $dic.Add("SourceSubscriptionId",$srcContext.Subscription.SubscriptionId)
+    $dic.Add("SourceTenantId",$srcContext.Tenant.TenantId)
+    $dic.Add("DestinationEnvironment",$destContext.Environment.Name)
+    $dic.Add("DestinationSubscriptionId",$destContext.Subscription.SubscriptionId)
+    $dic.Add("DestinationTenantId",$destContext.Tenant.TenantId)
+    $dic.Add("VmSize",$vmProfile.HardwareProfile.VmSize)
+    $dic.Add("VmLocation",$vmProfile.Location)
+    $dic.Add("VmOsType",$vmProfile.StorageProfile.OsDisk.OsType)
+    $dic.Add("VmNumberOfDataDisk",$vmProfile.StorageProfile.DataDisks.Count)
+    $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $true} | %{$dic.Add("VmOsDiskSzie",$_.BlobActualBytes)}
+    $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $false} | %{$dic.Add(("VmDataDisk"+$_.Lun+"Size"),$_.BlobActualBytes)}
+    $Global:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | %{
+      $dic.Add(($_.phaseName+"TimeSpan"),$_.TimeSpan);
+      $dic.Add(($_.phaseName+"Status"),$_.PhaseStatus);
+    }
+
+    Start-Job -ScriptBlock {
+        Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
+        $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
+        $telemetry.AddOrUpdateEntity($args[1],$args[2],$args[3])
+    } -ArgumentList $path, $srcContext.Account, $Global:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
+
+}
   ##Get the parameter if not provided
   Try
   {
     if ( $SrcContext -eq $null )
     {
-      $SrcEnv = SelectionBox -title "Please Select the Source Environment" -options ("Global Azure", "Germany Azure", "China Azure")
+      $SrcEnv = SelectionBox -title "Please Select the Source Environment" -options ("Microsoft Azure", "Microsoft Azure in Germany", "Azure in China (operated by 21 vianet)")
       Switch ( $SrcEnv )
       {
-        "China Azure" { $SrcEnvironment = [AzureEnvironment] "AzureChinaCloud" }
-        "Germany Azure" { $SrcEnvironment = [AzureEnvironment] "AzureGermanCloud" }
-        "Global Azure" { $SrcEnvironment = [AzureEnvironment] "AzureCloud" }
+        "Azure in China (operated by 21 vianet)" { $SrcEnvironment = [AzureEnvironment] "AzureChinaCloud" }
+        "Microsoft Azure in Germany" { $SrcEnvironment = [AzureEnvironment] "AzureGermanCloud" }
+        "Microsoft Azure" { $SrcEnvironment = [AzureEnvironment] "AzureCloud" }
       }
 
       [Windows.Forms.MessageBox]::Show("Please Enter " + $SrcEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
@@ -271,17 +352,18 @@
       $SrcContext = Get-AzureRmContext
     }
 
+    MigrationTelemetry -srcContext $srcContext
 
     if ($destContext -eq $null )
     {
       if ([string]::IsNullOrEmpty($destEnvironment))
       {
-        $destEnv = SelectionBox -title "Please Select the Destination Environment" -options ("China Azure", "Germany Azure", "Global Azure")
+        $destEnv = SelectionBox -title "Please Select the Destination Environment" -options ("Azure in China (operated by 21 vianet)", "Microsoft Azure in Germany", "Microsoft Azure")
         Switch ( $destEnv )
         {
-          "China Azure" { $destEnvironment = [AzureEnvironment] "AzureChinaCloud" }
+          "Azure in China (operated by 21 vianet)" { $destEnvironment = [AzureEnvironment] "AzureChinaCloud" }
           "Germany Azure" { $destEnvironment = [AzureEnvironment] "AzureGermanCloud" }
-          "Global Azure" { $destEnvironment = [AzureEnvironment] "AzureCloud" }
+          "Microsoft Azure" { $destEnvironment = [AzureEnvironment] "AzureCloud" }
         }
       }
       else
@@ -365,11 +447,12 @@
     {
       $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext
     }
-
+    MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Succeed
   }
   Catch
   {
     Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+    MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Failed -completed
     Throw "Input Parameters are not set correctly. Please try again."
   }
 
@@ -388,8 +471,10 @@
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
         Throw "Validation Failed. Please check the error message and try again."
       }
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Succeed
       return $validationResult
     }
 
@@ -403,9 +488,11 @@
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -completed -phaseStatus Failed
         Throw "Preparation Failed. Please check the error message and try again."
       }
-      break
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -completed -phaseStatus Succeed
+      return
     }
 
     ##VHD Copy Only
@@ -413,13 +500,15 @@
     {
       Try
       { 
-        $diskUris = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+        $diskUris,$vm = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
       }
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -completed -phaseStatus Failed
         Throw "Vhd Copy Failed. Please check the error message and try again."
       }
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -completed -phaseStatus Succeed
       return $diskUris
     }
 
@@ -438,8 +527,11 @@
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild" -completed -phaseStatus Failed
         Throw "VM Building Failed. Please check the error message and try again."
       } 
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild" -completed -phaseStatus Succeed
+      return
     }
     
     #Rename Only
@@ -454,7 +546,6 @@
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
         Throw "Rename Failed. Please check the error message and try again."
       }
-      
       return $RenameInfos
     }
   }
@@ -469,35 +560,42 @@
     Try
     {
       $validationResult = .\Validate.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -phaseStatus Succeed
     }
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
       Throw "Validation Failed. Please check the error message and try again."
     }
     
     if ($validationResult.Result -eq "Failed")
     {
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
       return $validationResult
     }
   
     Try
     {
       .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -phaseStatus Succeed
     }
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -completed -phaseStatus Failed
       Throw "Preparation Failed. Please check the error message and try again."
     }
     
     Try
     {
-      $diskUris = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      $diskUris,$vm = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -phaseStatus Succeed
     }
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -completed -phaseStatus Failed
       Throw "Vhd Copy Failed. Please check the error message and try again."
     }
     
@@ -508,6 +606,7 @@
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild" -completed -phaseStatus Failed
       Throw "VM Building Failed. Please check the error message and try again."
     }
     Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Succeeded" -percentComplete 100

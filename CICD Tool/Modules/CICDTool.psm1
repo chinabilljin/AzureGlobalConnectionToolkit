@@ -1,4 +1,4 @@
-﻿Function Check-AzureRmMigrationPSRequirement
+﻿function Check-AzureRmMigrationPSRequirement
 {
   $moduleList = Get-Module -ListAvailable
 
@@ -23,6 +23,87 @@
   Check-AzurePSModule -module $AzureRmCompute
   Check-AzurePSModule -module $AzureRMNetwork
   Check-AzurePSModule -module $AzureRMProfile
+
+}
+
+Function MigrationTelemetry 
+{
+    Param(
+          [Parameter(Mandatory=$true)]
+          [PSObject] $srcContext,
+
+          [Parameter(Mandatory=$false)]
+          [PSObject] $destContext,
+
+          [Parameter(Mandatory=$false)]
+          [PSObject] $vmProfile,
+
+          [Parameter(Mandatory=$false)]
+          [ValidateSet("UserInput", "PreValidation","Preparation", "VhdCopy", "VMBuild", "PostValidate")]
+          [String] $phaseName = "",
+
+          [Parameter(Mandatory=$false)]
+          [ValidateSet("Succeed", "Failed", "Started")]
+          [String] $phaseStatus = "Started",
+
+          [Switch] $completed
+
+        )
+    $path = $env:USERPROFILE + "\Documents\WindowsPowerShell\Modules\AzureGlobalConnectionToolkit\CICDTool"
+
+    #record timespan for each phase
+    $dateTime = Get-Date
+    
+    $duration = If ($timeSpanList.Count -eq 0) {
+        0
+    } else {
+        for($i=$timeSpanList.Count-1;$i -ge 0;$i-- ) {
+            if($timeSpanList[$i].PhaseName -ne $phaseName) {
+                $lastPhaseDateTime = $timeSpanList[$i].DateTime
+                break
+            }
+        }
+        ($dateTime - $lastPhaseDateTime).TotalSeconds.ToString("F1")
+    }
+
+    $timeSpan = New-Object -TypeName PSObject 
+    $timeSpan | Add-Member -MemberType NoteProperty -Name PhaseName -Value $phaseName 
+    $timeSpan | Add-Member -MemberType NoteProperty -Name PhaseStatus -Value $phaseStatus
+    $timeSpan | Add-Member -MemberType NoteProperty -Name DateTime -Value $dateTime 
+    $timeSpan | Add-Member -MemberType NoteProperty -Name TimeSpan -Value $duration 
+
+    $Script:timeSpanList += $timeSpan
+
+    #just record the start time when phase name was not provided, so no table upgrade
+    if($phaseName -eq "") {return}
+
+    $dic = @{}
+    $dic.Add("Completed",$completed.IsPresent)
+    $dic.Add("SrcContext",(ConvertTo-Json $srcContext))
+    $dic.Add("DestContext",(ConvertTo-Json $destContext))
+    $dic.Add("VmProfile",(ConvertTo-Json $vmProfile))
+    $dic.Add("SourceEnvironment",$srcContext.Environment.Name)
+    $dic.Add("SourceSubscriptionId",$srcContext.Subscription.SubscriptionId)
+    $dic.Add("SourceTenantId",$srcContext.Tenant.TenantId)
+    $dic.Add("DestinationEnvironment",$destContext.Environment.Name)
+    $dic.Add("DestinationSubscriptionId",$destContext.Subscription.SubscriptionId)
+    $dic.Add("DestinationTenantId",$destContext.Tenant.TenantId)
+    $dic.Add("VmSize",$vmProfile.HardwareProfile.VmSize)
+    $dic.Add("VmLocation",$vmProfile.Location)
+    $dic.Add("VmOsType",$vmProfile.StorageProfile.OsDisk.OsType)
+    $dic.Add("VmNumberOfDataDisk",$vmProfile.StorageProfile.DataDisks.Count)
+    $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $true} | %{$dic.Add("VmOsDiskSzie",$_.BlobActualBytes)}
+    $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $false} | %{$dic.Add(("VmDataDisk"+$_.Lun+"Size"),$_.BlobActualBytes)}
+    $Global:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | %{
+      $dic.Add(($_.phaseName+"TimeSpan"),$_.TimeSpan);
+      $dic.Add(($_.phaseName+"Status"),$_.PhaseStatus);
+    }
+
+    Start-Job -ScriptBlock {
+        Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
+        $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
+        $telemetry.AddOrUpdateEntity($args[1],$args[2],$args[3])
+    } -ArgumentList $path, $srcContext.Account, $Script:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
 
 }
 
@@ -82,7 +163,7 @@ function Start-AzureRmVMMigrationValidate
     {
       if ( $RenameInfo.GetType().FullName -notmatch "ResourceProfile" )
       {
-        Throw "-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile."
+        Throw "-RenameInfos : parameter type is invalid. Please enter the right parameter type: ResourceProfile"
       }
     }
   }
@@ -100,150 +181,160 @@ function Start-AzureRmVMMigrationValidate
     [String] $DestinationResourceGroup
     [String] $SourceName
     [String] $DestinationName
-  }
-
-  Function Add-ResourceList
-  {
-    Param(
-      [Parameter(Mandatory=$True)]
-      [String] $resourceId
-    )
-    
-    $resource = New-Object ResourceProfile
-    $resource.DestinationName = $resourceId.Split("/")[8]
-    $resource.ResourceType = $resourceId.Split("/")[7]
-    $resource.DestinationResourceGroup = $resourceId.Split("/")[4]
-   
-    $resourceCheck = $vmResources | Where-Object { ($_.SourceName -eq $resource.SourceName) -and ($_.ResourceType -eq $resource.ResourceType) -and ($_.SourceResourceGroup -eq $resource.SourceResourceGroup) }
-   
-    if ( $resourceCheck -eq $null )
-    {
-      $Script:vmResources += $resource
-    }
-  }
-
-  Function Add-StorageList
-  {
-    Param(
-      [Parameter(Mandatory=$True)]
-      [String] $storName   
-    )
-
-    $storCheck = $vmResources | Where-Object { ($_.Name -eq $storName) -and ($_.ResourceType -eq "storageAccounts" ) }
-
-    if ( $storCheck -eq $null )
-    {
-      $targetStor = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storName }
-      
-      $resource = New-Object ResourceProfile
-      $resource.DestinationName = $targetStor.StorageAccountName
-      $resource.ResourceType = "storageAccounts"
-      $resource.DestinationResourceGroup = $targetStor.ResourceGroupName
-
-      $Script:vmResources += $resource
-    }
+    [String] $DnsName
   }
 
   ####Get VM Components####
-  if($RenameInfos)
+  if($RenameInfos.Count -ne 0)
   {
     $vmResources = $RenameInfos
   }
   else
   {
-      Set-AzureRmContext -Context $SrcContext | Out-Null
-
-      #VM
-      $Script:vmResources = @()
-
-      Add-ResourceList -resourceId $vm.Id
-
-      #AS
-      if ($vm.AvailabilitySetReference -ne $null)
+    Function Add-ResourceList
+    {
+      Param(
+        [Parameter(Mandatory=$True)]
+        [String] $resourceId
+      )
+    
+      $resource = New-Object ResourceProfile
+      $resource.DestinationName = $resourceId.Split("/")[8]
+      $resource.ResourceType = $resourceId.Split("/")[7]
+      $resource.DestinationResourceGroup = $resourceId.Split("/")[4]
+   
+      $resourceCheck = $vmResources | Where-Object { ($_.SourceName -eq $resource.SourceName) -and ($_.ResourceType -eq $resource.ResourceType) -and ($_.SourceResourceGroup -eq $resource.SourceResourceGroup) }
+   
+      if ( $resourceCheck -eq $null )
       {
-        Add-ResourceList -resourceId $vm.AvailabilitySetReference.Id
+        if ($resource.ResourceType -eq "publicIPAddresses")
+        {
+          $pip = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
+          $resource.DnsName = $pip.DnsSettings.DomainNameLabel
+        }
+        $Script:vmResources += $resource
       }
+    }
+
+    Function Add-StorageList
+    {
+      Param(
+        [Parameter(Mandatory=$True)]
+        [String] $storName   
+      )
+
+      $storCheck = $vmResources | Where-Object { ($_.SourceName -eq $storName) -and ($_.ResourceType -eq "storageAccounts" ) }
+
+      if ( $storCheck -eq $null )
+      {
+        $targetStor = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storName }
+      
+        $resource = New-Object ResourceProfile
+        $resource.DestinationName = $targetStor.StorageAccountName
+        $resource.ResourceType = "storageAccounts"
+        $resource.DestinationResourceGroup = $targetStor.ResourceGroupName
+
+        $Script:vmResources += $resource
+      }
+    }  
+    
+    Set-AzureRmContext -Context $SrcContext | Out-Null
+
+    #VM
+    $Script:vmResources = @()
+
+    Add-ResourceList -resourceId $vm.Id
+
+    #AS
+    if ($vm.AvailabilitySetReference -ne $null)
+    {
+      Add-ResourceList -resourceId $vm.AvailabilitySetReference.Id
+    }
    
 
-      #NIC
-      if ($vm.NetworkInterfaceIDs -ne $null)
-      { 
-        foreach ( $nicId in $vm.NetworkInterfaceIDs )
-        {
-          Add-ResourceList -resourceId $nicId
-            
-          $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId }
-     
-          foreach ( $ipConfig in $nic.IpConfigurations )
-          {
-             #LB
-             foreach( $lbp in $ipConfig.LoadBalancerBackendAddressPools)
-             {   
-                Add-ResourceList -resourceId $lbp.Id
-            
-                #PIP-LB
-                $lb = Get-AzureRmLoadBalancer -Name $lbp.Id.Split("/")[8] -ResourceGroupName $lbp.Id.Split("/")[4]
-                                  
-                foreach ( $fip in $lb.FrontendIpConfigurations )
-                {
-                   Add-ResourceList -resourceId $fip.PublicIpAddress.Id
-                }  
-             }
-
-             #VN
-         
-             Add-ResourceList -resourceId $ipConfig.Subnet.Id
-
-             #NSG-VN
-             $vn = Get-AzureRmVirtualNetwork -Name $ipConfig.Subnet.Id.Split("/")[8] -ResourceGroupName $ipConfig.Subnet.Id.Split("/")[4]
-            
-             foreach ( $subnet in $vn.Subnets)
-             {
-                if ( $subnet.NetworkSecurityGroup -ne $null)
-                {
-                  Add-ResourceList -resourceId $subnet.NetworkSecurityGroup.Id                
-                }
-             }
-         
-
-             #PIP-nic
-             if ($ipConfig.PublicIpAddress -ne $null)
-             {
-               Add-ResourceList -resourceId $ipConfig.PublicIpAddress.Id
-             }
-          }
-     
-          #NSG-nic
-          if ($nic.NetworkSecurityGroup -ne $null)
-          {
-             Add-ResourceList -resourceId $nic.NetworkSecurityGroup.Id
-          }
-
-        }
-      }
-
-      #OSDisk
-      $osuri = $vm.StorageProfile.OsDisk.Vhd.Uri
-      if ( $osuri -match "https" ) {
-      $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)}
-      else {
-        $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
-      }
-      Add-StorageList -storName $osstorname
-
-
-      #DataDisk
-      foreach($dataDisk in $vm.StorageProfile.DataDisks)
+    #NIC
+    if ($vm.NetworkInterfaceIDs -ne $null)
+    { 
+      foreach ( $nicId in $vm.NetworkInterfaceIDs )
       {
-        $datauri = $dataDisk.Vhd.Uri
-        if ( $datauri -match "https" ) {
-        $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
-        else {
-          $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
+        Add-ResourceList -resourceId $nicId
+            
+        $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId }
+     
+        foreach ( $ipConfig in $nic.IpConfigurations )
+        {
+          #LB
+          foreach( $lbp in $ipConfig.LoadBalancerBackendAddressPools)
+          {   
+            Add-ResourceList -resourceId $lbp.Id
+            
+            #PIP-LB
+            $lb = Get-AzureRmLoadBalancer -Name $lbp.Id.Split("/")[8] -ResourceGroupName $lbp.Id.Split("/")[4]
+                                  
+            foreach ( $fip in $lb.FrontendIpConfigurations )
+            {
+               Add-ResourceList -resourceId $fip.PublicIpAddress.Id
+            }  
+          }
+
+          #VN
+         
+          Add-ResourceList -resourceId $ipConfig.Subnet.Id
+
+          #NSG-VN
+          $vn = Get-AzureRmVirtualNetwork -Name $ipConfig.Subnet.Id.Split("/")[8] -ResourceGroupName $ipConfig.Subnet.Id.Split("/")[4]
+           
+          foreach ( $subnet in $vn.Subnets)
+          {
+            if ( $subnet.NetworkSecurityGroup -ne $null)
+            {
+              Add-ResourceList -resourceId $subnet.NetworkSecurityGroup.Id                
+            }
+          }
+         
+
+          #PIP-nic
+          if ($ipConfig.PublicIpAddress -ne $null)
+          {
+            Add-ResourceList -resourceId $ipConfig.PublicIpAddress.Id
+          }
         }
-        Add-StorageList -storName $datastorname
-      } 
+     
+        #NSG-nic
+        if ($nic.NetworkSecurityGroup -ne $null)
+        {
+          Add-ResourceList -resourceId $nic.NetworkSecurityGroup.Id
+        }
+
+      }
+    }
+
+    #OSDisk
+    $osuri = $vm.StorageProfile.OsDisk.Vhd.Uri
+    if ( $osuri -match "https" ) 
+    {
+      $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)
+    }
+    else 
+    {
+      $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
+    }
+    Add-StorageList -storName $osstorname
+
+
+    #DataDisk
+    foreach($dataDisk in $vm.StorageProfile.DataDisks)
+    {
+      $datauri = $dataDisk.Vhd.Uri
+      if ( $datauri -match "https" ) {
+      $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
+      else {
+        $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
+      }
+      Add-StorageList -storName $datastorname
+    } 
   }
+
   ####Start Validation####
 
 
@@ -265,19 +356,19 @@ function Start-AzureRmVMMigrationValidate
     
     $messageHeader = $null
     switch($result){
-        "Failed"{
-            $Script:result = "Failed"
-            $messageHeader = "[Error] "
-        }
-        "SucceedWithWarning"{
-            if($Script:result -eq "Succeed"){
-                $Script:result = "SucceedWithWarning"
-            }
-            $messageHeader = "[Warning] "
-        }
+      "Failed"{
+          $Script:result = "Failed"
+          $messageHeader = "[Error] "
+      }
+      "SucceedWithWarning"{
+          if($Script:result -eq "Succeed"){
+              $Script:result = "SucceedWithWarning"
+          }
+          $messageHeader = "[Warning] "
+      }
     }
     if($detail){
-        $Script:resultDetailsList += $messageHeader + $detail
+      $Script:resultDetailsList += $messageHeader + $detail
     }
   }
 
@@ -287,24 +378,23 @@ function Start-AzureRmVMMigrationValidate
       [Parameter(Mandatory=$True)]
       [String] $VmSize   
     )
-
     switch -regex ($VmSize) 
     { 
-        "^Basic_A[0-4]$" {"Basic A Family Cores"} 
-        "^Standard_A[0-7]$" {"Standard A0-A7 Family Cores"}
-        "^Standard_A([89]|1[01])$" {"Standard A8-A11 Family Cores"} 
-        "^Standard_D1?[1-5]_v2$" {"Standard Dv2 Family Cores "} 
-        "^Standard_D1?[1-4]$" {"Standard D Family Cores"} 
-        "^Standard_G[1-5]$" {"Standard G Family Cores"} 
-        "^Standard_DS1?[1-4]$" {"Standard DS Family Cores"} 
-        "^Standard_DS1?[1-5]_v2$" {"Standard DSv2 Family Cores"} 
-        "^Standard_GS[1-5]$" {"Standard GS Family Cores"} 
-        "^Standard_F([1248]|16)$" {"Standard F Family Cores"} 
-        "^Standard_F([1248]|16)s$" {"Standard FS Family Cores"} 
-        "^Standard_NV(6|12|24)$" {"Standard NV Family Cores"} 
-        "^Standard_NC(6|12|24)$" {"Standard NC Family Cores"} 
-        "^Standard_H(8m?|16m?r?)$" {"Standard H Family Cores"} 
-        default {"The Core Family could not be determined."}
+      "^Basic_A[0-4]$" {"Basic A Family Cores"} 
+      "^Standard_A[0-7]$" {"Standard A0-A7 Family Cores"}
+      "^Standard_A([89]|1[01])$" {"Standard A8-A11 Family Cores"} 
+      "^Standard_D1?[1-5]_v2$" {"Standard Dv2 Family Cores "} 
+      "^Standard_D1?[1-4]$" {"Standard D Family Cores"} 
+      "^Standard_G[1-5]$" {"Standard G Family Cores"} 
+      "^Standard_DS1?[1-4]$" {"Standard DS Family Cores"} 
+      "^Standard_DS1?[1-5]_v2$" {"Standard DSv2 Family Cores"} 
+      "^Standard_GS[1-5]$" {"Standard GS Family Cores"} 
+      "^Standard_F([1248]|16)$" {"Standard F Family Cores"} 
+      "^Standard_F([1248]|16)s$" {"Standard FS Family Cores"} 
+      "^Standard_NV(6|12|24)$" {"Standard NV Family Cores"} 
+      "^Standard_NC(6|12|24)$" {"Standard NC Family Cores"} 
+      "^Standard_H(8m?|16m?r?)$" {"Standard H Family Cores"} 
+      default {"The Core Family could not be determined."}
     }
   }
 
@@ -312,7 +402,7 @@ function Start-AzureRmVMMigrationValidate
   $Script:result = "Succeed"
   $Script:resultDetailsList = @()
 
-  # check src permission
+  #check src permission
   Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Permission" -percentComplete 10
 
   Set-AzureRmContext -Context $SrcContext | Out-Null
@@ -324,7 +414,7 @@ function Start-AzureRmVMMigrationValidate
   }
 
 
-  # check dest permission
+  #check dest permission
   Set-AzureRmContext -Context $DestContext | Out-Null
   $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $DestContext.Account
 
@@ -362,11 +452,11 @@ function Start-AzureRmVMMigrationValidate
   }
 
 
-  # Storage Quota Check
+  #Storage Quota Check
   $storageAccountsCount = 0
   foreach ($resource in $vmResources) {
     if($resource.ResourceType -eq "storageAccounts"){
-        $storageAccountsCount += 1
+      $storageAccountsCount += 1
     }
   }
   $storageUsage = Get-AzureRmStorageUsage
@@ -385,11 +475,11 @@ function Start-AzureRmVMMigrationValidate
   {
     if($resource.ResourceType -eq "storageAccounts")
     {
-       $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.DestinationName }
-       if ( $saCheck -eq $null )
-       {
-           $storageAccountNames += $resource.DestinationName
-       }
+      $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.DestinationName }
+      if ( $saCheck -eq $null )
+      {
+        $storageAccountNames += $resource.DestinationName
+      }
     }
   }
 
@@ -409,7 +499,7 @@ function Start-AzureRmVMMigrationValidate
     }
     else
     {
-        Add-ResultList -result "SucceedWithWarning" -detail ("storage account name: " + $storage + " exist in the subscription")
+      Add-ResultList -result "SucceedWithWarning" -detail ("storage account name: " + $storage + " exist in the subscription")
     }
   }
 
@@ -417,18 +507,17 @@ function Start-AzureRmVMMigrationValidate
 
   foreach ( $resource in $vmResources)
   {
-    if($resource.ResourceType -eq "publicIPAddresses"){
-        Set-AzureRmContext -Context $SrcContext | Out-Null
-        $sourcePublicAddress = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
-        Set-AzureRmContext -Context $DestContext | Out-Null
-        if($sourcePublicAddress.DnsSettings.DomainNameLabel -ne $null)
+    if($resource.ResourceType -eq "publicIPAddresses")
+    {    
+      if(!([string]::IsNullOrEmpty($resource.DnsName)))
+      {
+        Set-AzureRmContext -Context $DestContext | Out-Null  
+        $dnsTestResult = Test-AzureRmDnsAvailability -DomainNameLabel $resource.DnsName -Location $targetLocation
+        if($dnsTestResult -ne "True")
         {
-            $dnsTestResult = Test-AzureRmDnsAvailability -DomainNameLabel $sourcePublicAddress.DnsSettings.DomainNameLabel -Location $targetLocation
-            if($dnsTestResult -ne "True")
-            {
-                Add-ResultList -result "Failed" -detail ("The dns name " + $sourcePublicAddress.DnsSettings.DomainNameLabel + " validate failed, because DNS name not available in target location.")
-            }
+            Add-ResultList -result "Failed" -detail ("The dns name: " + $resource.DnsName + " validate failed, because DNS name not available in target location.")
         }
+      }
     }
   }
 
@@ -441,22 +530,22 @@ function Start-AzureRmVMMigrationValidate
   foreach ( $resource in $vmResources)
   {
     $resourceCheck = $DestResources | Where-Object {$_.ResourceType -match $resource.ResourceType } | 
-                                      Where-Object {$_.ResourceId.Split("/")[4] -eq $resource.DestinationResourceGroup} | 
-                                      Where-Object {$_.Name -eq $resource.DestinationName}
+                                    Where-Object {$_.ResourceId.Split("/")[4] -eq $resource.DestinationResourceGroup} | 
+                                    Where-Object {$_.Name -eq $resource.DestinationName}
     if ($resourceCheck -ne $null)
     {
-        switch ($resource.ResourceType) 
-        { 
-            "virtualMachines" {$resourceResult = "Failed"} 
-            "availabilitySets" {$resourceResult = "Failed"}
-            "networkInterfaces" {$resourceResult = "Failed"}
-            "loadBalancers" {$resourceResult = "SucceedWithWarning"}
-            "publicIPAddresses" {$resourceResult = "SucceedWithWarning"}
-            "virtualNetworks" {$resourceResult = "SucceedWithWarning"}
-            "networkSecurityGroups" {$resourceResult = "SucceedWithWarning"}
-            "storageAccounts" {$resourceResult = "SucceedWithWarning"}
-        }
-        Add-ResultList -result $resourceResult -detail ("The resource:" + $resource.DestinationName +  " (type: "+$resource.ResourceType+") in Resource Group: " + $resource.DestinationResourceGroup + " already exists in destination.")
+      switch ($resource.ResourceType) 
+      { 
+          "virtualMachines" {$resourceResult = "Failed"} 
+          "availabilitySets" {$resourceResult = "Failed"}
+          "networkInterfaces" {$resourceResult = "Failed"}
+          "loadBalancers" {$resourceResult = "SucceedWithWarning"}
+          "publicIPAddresses" {$resourceResult = "SucceedWithWarning"}
+          "virtualNetworks" {$resourceResult = "SucceedWithWarning"}
+          "networkSecurityGroups" {$resourceResult = "SucceedWithWarning"}
+          "storageAccounts" {$resourceResult = "SucceedWithWarning"}
+      }
+      Add-ResultList -result $resourceResult -detail ("The resource:" + $resource.DestinationName +  " (type: "+$resource.ResourceType+") in Resource Group: " + $resource.DestinationResourceGroup + " already exists in destination.")
     }
     
 
@@ -678,7 +767,7 @@ function Start-AzureRmVMMigrationPrepare
     foreach($dataDisk in $vm.StorageProfile.DataDisks)
     {
       $datauri = $dataDisk.Vhd.Uri
-      if ( $osuri -match "https" ) {
+      if ( $datauri -match "https" ) {
       $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
       else {
         $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
@@ -794,6 +883,7 @@ function Start-AzureRmVMMigrationPrepare
 
   ##Update Progress
   Write-Progress -id 10 -parentId 0 -activity "Preparation" -status "Succeeded" -percentComplete 100
+
 
 }
 
@@ -924,7 +1014,7 @@ function Start-AzureRmVMMigrationVhdCopy
    
     Set-AzureRmContext -Context $SrcContext | Out-Null
     $datauri = $dataDisk.Vhd.Uri
-    if ( $osuri -match 'https' ) {
+    if ( $datauri -match 'https' ) {
     $dataDiskInfo.SrcAccountName = $datauri.Substring(8, $datauri.IndexOf('.blob') - 8)}
     else {
       $dataDiskInfo.SrcAccountName = $datauri.Substring(7, $datauri.IndexOf('.blob') - 7)
@@ -973,6 +1063,7 @@ function Start-AzureRmVMMigrationVhdCopy
     }
   }
 
+
   ####Start Vhds Copy####
 
   Foreach ( $vhd in $StorageInfos )
@@ -1004,6 +1095,9 @@ function Start-AzureRmVMMigrationVhdCopy
     Start-AzureStorageBlobCopy -ICloudBlob $vhd.snapShot -Context $srcStorageContext -DestContainer $vhd.DestContainerName -DestBlob $vhd.DestBlobName -DestContext $destStorageContext | Out-Null
 
   }
+
+  $vm | Add-Member -Name StorageInfos -Value $StorageInfos -MemberType NoteProperty
+  MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -phaseStatus Started
 
   ####Copy Status Check###
   $copyComplete = $false
@@ -1110,7 +1204,8 @@ function Start-AzureRmVMMigrationVhdCopy
   $diskUris | Add-Member -Name osDiskUri -Value $osDiskUri -MemberType NoteProperty
   $diskUris | Add-Member -Name dataDiskUris -Value $dataDiskUris -MemberType NoteProperty
 
-  return $diskUris
+  return $diskUris,$vm
+
 }
 
 function Start-AzureRmVMMigrationBuild
@@ -1191,6 +1286,7 @@ function Start-AzureRmVMMigrationBuild
     [String] $DestinationResourceGroup
     [String] $SourceName
     [String] $DestinationName
+    [String] $DnsName
   }
 
 
@@ -1406,61 +1502,97 @@ function Start-AzureRmVMMigrationBuild
   
     if ( $resourcecheck -eq $null ) {
 
-      if ($resource.ResourceType -eq 'virtualMachines')
+      switch ($resource.ResourceType)
       {
-        $c = $SrcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match "Microsoft.Compute/virtualMachines") }
-
-        if ($c -eq $null)
+        'virtualMachines'
         {
-          Throw ("Cannot find the virtual machine " + $resource.SourceName + " in source subscription.")
-        }
+          $c = $SrcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match "Microsoft.Compute/virtualMachines") }
 
-        $crspropstorprofile = New-Object PSObject
-        $crspropstorprofile | Add-Member -Name "osDisk" -MemberType NoteProperty -Value ($c.properties.storageProfile.osdisk | Select-Object -Property * -ExcludeProperty image)
-        $crspropstorprofile | Add-Member -Name "dataDisks" -MemberType NoteProperty -Value $c.properties.storageProfile.dataDisks
-        $crspropstorprofile.osdisk.createOption = "Attach"
-
-        $ostype = $vm.StorageProfile.OsDisk.OsType.ToString()
-    
-        $crspropstorprofile.osdisk | Add-Member -Name "osType" -MemberType NoteProperty -Value $ostype -Force
-
-        $crspropstorprofile.osdisk.vhd.uri = $osDiskUri
-    
-        if ($crspropstorprofile.dataDisks.count -ne 0) {
-          foreach ($d in $crspropstorprofile.dataDisks) {
-            $d.createOption = "Attach"
-            $d.vhd.uri = $dataDiskUris[$d.lun]
+          if ($c -eq $null)
+          {
+            Throw ("Cannot find the virtual machine " + $resource.SourceName + " in source subscription.")
           }
+
+          $crspropstorprofile = New-Object PSObject
+          $crspropstorprofile | Add-Member -Name "osDisk" -MemberType NoteProperty -Value ($c.properties.storageProfile.osdisk | Select-Object -Property * -ExcludeProperty image)
+          $crspropstorprofile | Add-Member -Name "dataDisks" -MemberType NoteProperty -Value $c.properties.storageProfile.dataDisks
+          $crspropstorprofile.osdisk.createOption = "Attach"
+
+          $ostype = $vm.StorageProfile.OsDisk.OsType.ToString()
+    
+          $crspropstorprofile.osdisk | Add-Member -Name "osType" -MemberType NoteProperty -Value $ostype -Force
+
+          $crspropstorprofile.osdisk.vhd.uri = $osDiskUri
+    
+          if ($crspropstorprofile.dataDisks.count -ne 0) {
+            foreach ($d in $crspropstorprofile.dataDisks) {
+              $d.createOption = "Attach"
+              $d.vhd.uri = $dataDiskUris[$d.lun]
+            }
+          }
+
+          $crsprop = New-Object PSObject
+          $crsprop | Add-Member -Name "hardwareProfile" -MemberType NoteProperty -Value $c.properties.hardwareProfile
+          $crsprop | Add-Member -Name "storageProfile" -MemberType NoteProperty -Value $crspropstorprofile
+          $crsprop | Add-Member -Name "networkProfile" -MemberType NoteProperty -Value $c.properties.networkProfile
+
+          if (!($c.properties.availabilitySet -eq $null)) {
+            $crsprop | Add-Member -Name "availabilitySet" -MemberType NoteProperty -Value $c.properties.availabilitySet
+          }
+
+          $crsDeps = @()
+
+          $crs = New-Object PSObject
+          $crs | Add-Member -Name "type" -MemberType NoteProperty -Value $c.type
+          $crs | Add-Member -Name "name" -MemberType NoteProperty -Value $c.name
+          $crs | Add-Member -Name "apiVersion" -MemberType NoteProperty -Value $c.apiVersion
+          $crs | Add-Member -Name "location" -MemberType NoteProperty -Value $targetLocation
+          $crs | Add-Member -Name "tags" -MemberType NoteProperty -Value $c.tags
+          $crs | Add-Member -Name "properties" -MemberType NoteProperty -Value $crsprop
+          $crs | Add-Member -Name "dependsOn" -MemberType NoteProperty -Value $crsDeps
+
+          $destResourceList.$destRg.Phase5 += $crs
         }
+        'publicIPAddresses'
+        {
+          $targetresource = $srcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match $resource.ResourceType) }
+          $targetresource.location = $targetLocation
+          $targetresource.dependsOn = @()
+        
+          if (!([string]::IsNullOrEmpty($resource.DnsName)))
+          {
+            if ($targetResource.properties.dnsSettings -eq $null)
+            {
+              $dnsSettings = New-Object PSObject
+              $dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName
+              $targetResource.properties | Add-Member -MemberType NoteProperty -Name dnsSettings -Value $dnsSettings
+            }
+            else
+            {
+              if ($targetResource.properties.dnsSettings.domainNameLabel -eq $null)
+              {
+                $targetResource.properties.dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName
+              }
+              else
+              {
+                $targetResource.properties.dnsSettings.domainNameLabel = $resource.DnsName
+              }
+            }
+          }
+          else
+          {
+            $targetResource.properties = $targetResource.properties | Select-Object -Property * -ExcludeProperty "dnsSettings"
+          }
 
-        $crsprop = New-Object PSObject
-        $crsprop | Add-Member -Name "hardwareProfile" -MemberType NoteProperty -Value $c.properties.hardwareProfile
-        $crsprop | Add-Member -Name "storageProfile" -MemberType NoteProperty -Value $crspropstorprofile
-        $crsprop | Add-Member -Name "networkProfile" -MemberType NoteProperty -Value $c.properties.networkProfile
-
-        if (!($c.properties.availabilitySet -eq $null)) {
-          $crsprop | Add-Member -Name "availabilitySet" -MemberType NoteProperty -Value $c.properties.availabilitySet
+          $destResourceList.$destRg.$phase += $targetresource      
+        }    
+        default
+        {
+          $targetresource = $srcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match $resource.ResourceType) }
+          $targetresource.location = $targetLocation
+          $targetresource.dependsOn = @()
+          $destResourceList.$destRg.$phase += $targetresource
         }
-
-        $crsDeps = @()
-
-        $crs = New-Object PSObject
-        $crs | Add-Member -Name "type" -MemberType NoteProperty -Value $c.type
-        $crs | Add-Member -Name "name" -MemberType NoteProperty -Value $c.name
-        $crs | Add-Member -Name "apiVersion" -MemberType NoteProperty -Value $c.apiVersion
-        $crs | Add-Member -Name "location" -MemberType NoteProperty -Value $targetLocation
-        $crs | Add-Member -Name "tags" -MemberType NoteProperty -Value $c.tags
-        $crs | Add-Member -Name "properties" -MemberType NoteProperty -Value $crsprop
-        $crs | Add-Member -Name "dependsOn" -MemberType NoteProperty -Value $crsDeps
-
-        $destResourceList.$destRg.Phase5 += $crs
-      }
-      else
-      {
-        $targetresource = $srcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match $resource.ResourceType) }
-        $targetresource.location = $targetLocation
-        $targetresource.dependsOn = @()
-        $destResourceList.$destRg.$phase += $targetresource
       }  
     }
   }
@@ -1710,7 +1842,7 @@ function Start-AzureRmVMMigrationBuild
 
     Write-Progress -id 30 -ParentId 0 -activity "Building VM" -status "Deploying VM" -percentComplete $progressPercentage
   }
-
+  MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild" -phaseStatus Succeed
 
   ####Validate the VM Deployment####
   Set-AzureRmContext -Context $DestContext | Out-Null
@@ -1731,14 +1863,15 @@ function Start-AzureRmVMMigrationBuild
   {
     $templatepath = $Env:TEMP + "\AzureMigrationtool\$tempId"
     Remove-Item $templatepath* -Force -Recurse
-
+    MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PostValidate" -completed -phaseStatus Failed
     Throw "The VM Migration is Failed."
   }
+
+  MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PostValidate" -phaseStatus Succeed -completed 
 }
 
 Function Set-AzureRmVMMigrationRename
 {
-
   Param(
     [Parameter(Mandatory=$True)]
     [PSObject] $vm,
@@ -1774,6 +1907,7 @@ Function Set-AzureRmVMMigrationRename
     [String] $DestinationResourceGroup
     [String] $SourceName
     [String] $DestinationName
+    [String] $DnsName
   }
 
   Function Add-ResourceList
@@ -1786,12 +1920,17 @@ Function Set-AzureRmVMMigrationRename
     $resource = New-Object ResourceProfile
     $resource.SourceName = $resourceId.Split("/")[8]
     $resource.ResourceType = $resourceId.Split("/")[7]
-    $resource.SourceResourceGroup = $resourceId.Split("/")[4]
+    $resource.SourceResourceGroup = $resourceId.Split("/")[4].ToLower()
    
     $resourceCheck = $vmResources | Where-Object { ($_.SourceName -eq $resource.SourceName) -and ($_.ResourceType -eq $resource.ResourceType) -and ($_.SourceResourceGroup -eq $resource.SourceResourceGroup) }
    
     if ( $resourceCheck -eq $null )
     {
+      if ($resource.ResourceType -eq "publicIPAddresses")
+      {
+        $pip = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
+        $resource.DnsName = $pip.DnsSettings.DomainNameLabel
+      }
       $Script:vmResources += $resource
     }
   }
@@ -1803,7 +1942,7 @@ Function Set-AzureRmVMMigrationRename
       [String] $storName   
     )
 
-    $storCheck = $vmResources | Where-Object { ($_.Name -eq $storName) -and ($_.ResourceType -eq "storageAccounts" ) }
+    $storCheck = $vmResources | Where-Object { ($_.SourceName -eq $storName) -and ($_.ResourceType -eq "storageAccounts" ) }
 
     if ( $storCheck -eq $null )
     {
@@ -1904,7 +2043,7 @@ Function Set-AzureRmVMMigrationRename
   foreach($dataDisk in $vm.StorageProfile.DataDisks)
   {
     $datauri = $dataDisk.Vhd.Uri
-    if ( $osuri -match "https" ) {
+    if ( $datauri -match "https" ) {
     $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
     else {
       $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
@@ -1914,7 +2053,8 @@ Function Set-AzureRmVMMigrationRename
 
 
   ####Rename Function####
-  $RenameFunction = {
+  $RenameFunction = 
+  {
     Class ResourceProfile
     {
       [String] $ResourceType
@@ -1922,6 +2062,7 @@ Function Set-AzureRmVMMigrationRename
       [String] $DestinationResourceGroup
       [String] $SourceName
       [String] $DestinationName
+      [String] $DnsName
     }
 
     Function Rename {
@@ -1984,14 +2125,24 @@ Function Set-AzureRmVMMigrationRename
       $objLabel.BackColor = "Transparent"
       $objLabel.ForeColor = "White"
       $objLabel.Font = $objFont
-      $objLabel.Text = "Please Rename Following Resources"
+      $objLabel.Text = "Please Check the Name of Following Resources"
       $objForm.Controls.Add($objLabel) 
+
+      $objFont2 = New-Object System.Drawing.Font("Arial",10,[System.Drawing.FontStyle]::Regular)
+      $objLabel2 = New-Object System.Windows.Forms.Label
+      $objLabel2.Location = New-Object System.Drawing.Size(10,55) 
+      $objLabel2.AutoSize = $True
+      $objLabel2.BackColor = "Transparent"
+      $objLabel2.ForeColor = "LightSteelBlue"
+      $objLabel2.Font = $objFont2
+      $objLabel2.Text = "Resource List"
+      $objForm.Controls.Add($objLabel2) 
 
       $objListbox = New-Object System.Windows.Forms.DataGridView -Property @{
         ColumnHeadersVisible = $true
         RowHeadersVisible = $false
-        location = New-Object System.Drawing.Size(10,70)
-        Size = New-Object System.Drawing.Size(750,420)
+        location = New-Object System.Drawing.Size(10,80)
+        Size = New-Object System.Drawing.Size(750,220)
         AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
         EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
         Height = 320
@@ -2024,9 +2175,58 @@ Function Set-AzureRmVMMigrationRename
       $objListbox.Columns[4].DefaultCellStyle.BackColor = "White"
 
       $vmResources | ForEach { $objListbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceResourceGroup, $_.SourceName, $_.SourceName )  } | Out-Null
-
   
       $objForm.Controls.Add($objListbox) 
+    
+      $objLabel3 = New-Object System.Windows.Forms.Label
+      $objLabel3.Location = New-Object System.Drawing.Size(10,325) 
+      $objLabel3.AutoSize = $True
+      $objLabel3.BackColor = "Transparent"
+      $objLabel3.ForeColor = "LightSteelBlue"
+      $objLabel3.Font = $objFont2
+      $objLabel3.Text = "DNS Name List"
+      $objForm.Controls.Add($objLabel3) 
+        
+      $objDnsbox = New-Object System.Windows.Forms.DataGridView -Property @{
+        ColumnHeadersVisible = $true
+        RowHeadersVisible = $false
+        location = New-Object System.Drawing.Size(10,350)
+        Size = New-Object System.Drawing.Size(750,100)
+        AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+        EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
+        Height = 320
+        Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
+        AllowUserToAddRows = $false
+      }
+    
+      $objDnsbox.ColumnCount = 5
+
+      $objDnsbox.EnableHeadersVisualStyles = $false
+      $objDnsbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
+      $objDnsbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
+  
+      $objDnsbox.Columns[0].Name = "ResourceType"
+      $objDnsbox.Columns[0].ReadOnly = $True
+      $objDnsbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
+
+      $objDnsbox.Columns[1].Name = "SoureResourceGroup"
+      $objDnsbox.Columns[1].ReadOnly = $True
+      $objDnsbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
+
+      $objDnsbox.Columns[2].Name = "SourceName"
+      $objDnsbox.Columns[2].ReadOnly = $True
+      $objDnsbox.Columns[2].DefaultCellStyle.BackColor = "Gainsboro"
+    
+      $objDnsbox.Columns[3].Name = "SourceDNSName"
+      $objDnsbox.Columns[3].ReadOnly = $True
+      $objDnsbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
+    
+      $objDnsbox.Columns[4].Name = "DestinationDNSName"
+      $objDnsbox.Columns[4].DefaultCellStyle.BackColor = "White"
+    
+      $vmResources | Where-Object {$_.ResourceType -eq "publicIPAddresses"} | ForEach { $objDnsbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceName, $_.DNSName, $_.DNSName )  } | Out-Null
+    
+      $objForm.Controls.Add($objDnsbox)
 
       $objForm.Add_Shown({$objForm.Activate()})
 
@@ -2046,6 +2246,12 @@ Function Set-AzureRmVMMigrationRename
     
           $renameInfos += $renameInfo
         }
+      
+        for ( $j = 0; $j -lt $objDnsbox.RowCount; $j ++ )
+        {
+          $DnsResource = $renameInfos | Where-Object { ($_.ResourceType -eq "publicIPAddresses") -and ( $_.SourceResourceGroup -eq  $objDnsbox.Rows[$j].Cells[1].Value) -and ($_.SourceName -eq  $objDnsbox.Rows[$j].Cells[2].Value) }
+          $DnsResource.DnsName = $objDnsbox.Rows[$j].Cells[4].Value
+        }
 
         $objForm.Dispose()
       }
@@ -2060,25 +2266,50 @@ Function Set-AzureRmVMMigrationRename
   }
   $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
   $result = $job | Receive-Job -Wait -AutoRemoveJob
+  $resultValidate = $false
+
+  While (!$resultValidate)
+  {
+    $resultValidate = $True
+
+    foreach ( $r in $result )
+    {
+      if ($r.ResourceType -ne "storageAccounts")
+      {
+        $resultCheck = $result | Where-Object { ($_.ResourceType -eq $r.ResourceType ) -and ( $_.DestinationResourceGroup -eq $r.DestinationResourceGroup ) -and ( $_.DestinationName -eq $r.DestinationName ) }
+        if ( $resultCheck.Count -gt 1 )
+        {
+          Write-Warning ("Name Duplicate: (" + $r.ResourceType + ") Destination Name: " + $r.DestinationName + " Desitnation Resource Group: " + $r.DestinationResourceGroup + " . Please input the destination information again.")
+          $resultValidate = $false
+        }
+      }
+    }
+    if (!$resultValidate)
+    {
+      $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
+      $result = $job | Receive-Job -Wait -AutoRemoveJob
+    }
+  }
 
   $renameInfos = @()
   $result | ForEach { 
-    $renameInfo = New-Object ResourceProfile;
-    $renameInfo.ResourceType = $_.ResourceType;
-    $renameInfo.SourceResourceGroup = $_.SourceResourceGroup;
-    $renameInfo.DestinationResourceGroup = $_.DestinationResourceGroup;
-    $renameInfo.SourceName = $_.SourceName;
-    $renameInfo.DestinationName = $_.DestinationName;
-    $renameInfos += $renameInfo;
+    $renameInfo = New-Object ResourceProfile
+    $renameInfo.ResourceType = $_.ResourceType
+    $renameInfo.SourceResourceGroup = $_.SourceResourceGroup
+    $renameInfo.DestinationResourceGroup = $_.DestinationResourceGroup
+    $renameInfo.SourceName = $_.SourceName
+    $renameInfo.DestinationName = $_.DestinationName
+    $renameInfo.DnsName = $_.DnsName
+    
+    $renameInfos += $renameInfo
     }
   return $renameInfos
-
 
 }
 
 function Start-AzureRmVMMigration
 {
-   Param(
+  Param(
     [Parameter(Mandatory=$false)]
     [PSObject] $vm,
 
@@ -2145,33 +2376,6 @@ function Start-AzureRmVMMigration
     }
   }
 
-  Function Check-AzureRmMigrationPSRequirement
-  {
-    $moduleList = Get-Module -ListAvailable
-
-    $AzureRmStorage = $moduleList | Where-Object { $_.Name -eq "AzureRm.Storage" }
-    $AzureRmCompute = $moduleList | Where-Object { $_.Name -eq "AzureRm.Compute" }
-    $AzureRMNetwork = $moduleList | Where-Object { $_.Name -eq "AzureRm.Network" }
-    $AzureRMProfile = $moduleList | Where-Object { $_.Name -eq "AzureRm.Profile" }
-
-    function Check-AzurePSModule
-    {
-      Param( [PSObject] $module )
-
-      if ( $module -eq $null )
-      { Throw "AzureRm PowerShell Module does not successfully install on PowerShell Environment. Please Install before execute this script." }
-
-      if ( !(($module.Version.Major -ge 2) -or (($module.Version.Major -eq 1) -and ( $module.Version.Minor -ge 7 ))) )
-      { Throw "This script requires AzureRm PowerShell version higher than 1.7.0. Please install the latest Azure Powershell before execute this script." }
-    
-    }
-
-    Check-AzurePSModule -module $AzureRmStorage
-    Check-AzurePSModule -module $AzureRmCompute
-    Check-AzurePSModule -module $AzureRMNetwork
-    Check-AzurePSModule -module $AzureRMProfile
-  }
-
   ##PS Module Check
   Check-AzureRmMigrationPSRequirement
 
@@ -2185,7 +2389,7 @@ function Start-AzureRmVMMigration
   }
 
   ##Form for GUI input
-  $showform = {
+  $showFormCode = {
     Function Show-Form
     {
       Param(
@@ -2311,27 +2515,29 @@ function Start-AzureRmVMMigration
       $MultipleChoice
     )
     if($MultipleChoice){
-        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1] -MultipleChoice $args[2]} -ArgumentList $title,$options,$MultipleChoice
+        $job = Start-Job -InitializationScript $showFormCode -ScriptBlock {Show-Form -title $args[0] -options $args[1] -MultipleChoice} -ArgumentList $title,$options
     }
-    else{
-        $job = Start-Job -InitializationScript $showform -ScriptBlock {Show-Form -title $args[0] -options $args[1]} -ArgumentList $title,$options
+    else {
+        $job = Start-Job -InitializationScript $showFormCode -ScriptBlock {Show-Form -title $args[0] -options $args[1]} -ArgumentList $title,$options
     }
     $result = $job | Receive-Job -Wait -AutoRemoveJob
     return $result
   }
-  
+
+  $Script:JobId = New-Guid | %{ $_.Guid }
+  $Script:timeSpanList = @()
 
   ##Get the parameter if not provided
   Try
   {
     if ( $SrcContext -eq $null )
     {
-      $SrcEnv = SelectionBox -title "Please Select the Source Environment" -options ("Global Azure", "Germany Azure", "China Azure")
+      $SrcEnv = SelectionBox -title "Please Select the Source Environment" -options ("Microsoft Azure", "Microsoft Azure in Germany", "Azure in China (operated by 21 vianet)")
       Switch ( $SrcEnv )
       {
-        "China Azure" { $SrcEnvironment = [AzureEnvironment] "AzureChinaCloud" }
-        "Germany Azure" { $SrcEnvironment = [AzureEnvironment] "AzureGermanCloud" }
-        "Global Azure" { $SrcEnvironment = [AzureEnvironment] "AzureCloud" }
+        "Azure in China (operated by 21 vianet)" { $SrcEnvironment = [AzureEnvironment] "AzureChinaCloud" }
+        "Microsoft Azure in Germany" { $SrcEnvironment = [AzureEnvironment] "AzureGermanCloud" }
+        "Microsoft Azure" { $SrcEnvironment = [AzureEnvironment] "AzureCloud" }
       }
 
       [Windows.Forms.MessageBox]::Show("Please Enter " + $SrcEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
@@ -2352,17 +2558,18 @@ function Start-AzureRmVMMigration
       $SrcContext = Get-AzureRmContext
     }
 
+    MigrationTelemetry -srcContext $srcContext
 
     if ($destContext -eq $null )
     {
       if ([string]::IsNullOrEmpty($destEnvironment))
       {
-        $destEnv = SelectionBox -title "Please Select the Destination Environment" -options ("China Azure", "Germany Azure", "Global Azure")
+        $destEnv = SelectionBox -title "Please Select the Destination Environment" -options ("Azure in China (operated by 21 vianet)", "Microsoft Azure in Germany", "Microsoft Azure")
         Switch ( $destEnv )
         {
-          "China Azure" { $destEnvironment = [AzureEnvironment] "AzureChinaCloud" }
-          "Germany Azure" { $destEnvironment = [AzureEnvironment] "AzureGermanCloud" }
-          "Global Azure" { $destEnvironment = [AzureEnvironment] "AzureCloud" }
+          "Azure in China (operated by 21 vianet)" { $destEnvironment = [AzureEnvironment] "AzureChinaCloud" }
+          "Microsoft Azure in Germany" { $destEnvironment = [AzureEnvironment] "AzureGermanCloud" }
+          "Microsoft Azure" { $destEnvironment = [AzureEnvironment] "AzureCloud" }
         }
       }
       else
@@ -2446,11 +2653,12 @@ function Start-AzureRmVMMigration
     {
       $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext
     }
-
+    MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Succeed
   }
   Catch
   {
     Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+    MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Failed -completed
     Throw "Input Parameters are not set correctly. Please try again."
   }
 
@@ -2469,8 +2677,10 @@ function Start-AzureRmVMMigration
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
         Throw "Validation Failed. Please check the error message and try again."
       }
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Succeed
       return $validationResult
     }
 
@@ -2484,9 +2694,11 @@ function Start-AzureRmVMMigration
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -completed -phaseStatus Failed
         Throw "Preparation Failed. Please check the error message and try again."
       }
-      break
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -completed -phaseStatus Succeed
+      return
     }
 
     ##VHD Copy Only
@@ -2494,13 +2706,15 @@ function Start-AzureRmVMMigration
     {
       Try
       { 
-        $diskUris = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+        $diskUris,$vm = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
       }
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -completed -phaseStatus Failed
         Throw "Vhd Copy Failed. Please check the error message and try again."
       }
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -completed -phaseStatus Succeed
       return $diskUris
     }
 
@@ -2519,8 +2733,11 @@ function Start-AzureRmVMMigration
       Catch
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild" -completed -phaseStatus Failed
         Throw "VM Building Failed. Please check the error message and try again."
       } 
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild" -completed -phaseStatus Succeed
+      return
     }
     
     #Rename Only
@@ -2535,7 +2752,6 @@ function Start-AzureRmVMMigration
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
         Throw "Rename Failed. Please check the error message and try again."
       }
-      
       return $RenameInfos
     }
   }
@@ -2550,35 +2766,42 @@ function Start-AzureRmVMMigration
     Try
     {
       $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -phaseStatus Succeed
     }
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
       Throw "Validation Failed. Please check the error message and try again."
     }
     
     if ($validationResult.Result -eq "Failed")
     {
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
       return $validationResult
     }
   
     Try
     {
       Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -phaseStatus Succeed
     }
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -completed -phaseStatus Failed
       Throw "Preparation Failed. Please check the error message and try again."
     }
     
     Try
     {
-      $diskUris = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      $diskUris,$vm = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -phaseStatus Succeed
     }
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -completed -phaseStatus Failed
       Throw "Vhd Copy Failed. Please check the error message and try again."
     }
     
@@ -2589,12 +2812,14 @@ function Start-AzureRmVMMigration
     Catch
     {
       Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild" -completed -phaseStatus Failed
       Throw "VM Building Failed. Please check the error message and try again."
     }
     Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Succeeded" -percentComplete 100
   
     return ("VM: " + $vm.Name +  " Migration Succeeded.")
   }
+  
 }
 
 Export-ModuleMember -Function Start-AzureRmVMMigration

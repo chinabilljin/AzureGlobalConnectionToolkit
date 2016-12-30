@@ -33,6 +33,7 @@ Class ResourceProfile
    [String] $DestinationResourceGroup
    [String] $SourceName
    [String] $DestinationName
+   [String] $DnsName
 }
 
 Function Add-ResourceList
@@ -45,12 +46,17 @@ Function Add-ResourceList
    $resource = New-Object ResourceProfile
    $resource.SourceName = $resourceId.Split("/")[8]
    $resource.ResourceType = $resourceId.Split("/")[7]
-   $resource.SourceResourceGroup = $resourceId.Split("/")[4]
+   $resource.SourceResourceGroup = $resourceId.Split("/")[4].ToLower()
    
    $resourceCheck = $vmResources | Where-Object { ($_.SourceName -eq $resource.SourceName) -and ($_.ResourceType -eq $resource.ResourceType) -and ($_.SourceResourceGroup -eq $resource.SourceResourceGroup) }
    
    if ( $resourceCheck -eq $null )
    {
+     if ($resource.ResourceType -eq "publicIPAddresses")
+     {
+       $pip = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
+       $resource.DnsName = $pip.DnsSettings.DomainNameLabel
+     }
      $Script:vmResources += $resource
    }
 }
@@ -62,7 +68,7 @@ Function Add-StorageList
     [String] $storName   
    )
 
-   $storCheck = $vmResources | Where-Object { ($_.Name -eq $storName) -and ($_.ResourceType -eq "storageAccounts" ) }
+   $storCheck = $vmResources | Where-Object { ($_.SourceName -eq $storName) -and ($_.ResourceType -eq "storageAccounts" ) }
 
    if ( $storCheck -eq $null )
    {
@@ -163,7 +169,7 @@ Add-StorageList -storName $osstorname
 foreach($dataDisk in $vm.StorageProfile.DataDisks)
 {
    $datauri = $dataDisk.Vhd.Uri
-   if ( $osuri -match "https" ) {
+   if ( $datauri -match "https" ) {
    $datastorname = $datauri.Substring(8, $datauri.IndexOf(".blob") - 8)}
    else {
     $datastorname = $datauri.Substring(7, $datauri.IndexOf(".blob") - 7)
@@ -173,161 +179,254 @@ foreach($dataDisk in $vm.StorageProfile.DataDisks)
 
 
 ####Rename Function####
-$RenameFunction = {
-Class ResourceProfile
+$RenameFunction = 
 {
-   [String] $ResourceType
-   [String] $SourceResourceGroup
-   [String] $DestinationResourceGroup
-   [String] $SourceName
-   [String] $DestinationName
-}
-
-Function Rename {
-Param(
-    [Parameter(Mandatory=$True)]
-    [AllowNull()]
-    [Object[]] 
-    $vmResources
-)
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-$objForm = New-Object System.Windows.Forms.Form 
-$objForm.Text = "Azure Global Connection Center"
-$objForm.Size = New-Object System.Drawing.Size(800,600) 
-$objForm.StartPosition = "CenterScreen"
-
-$objForm.KeyPreview = $True
-$objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
-    {
-      $objForm.DialogResult = "OK"
-      $objForm.Close()
-    }
-  })
-
-$objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
-  {$objForm.Close()}})
-
-$objForm.BackColor = "#1F4E79"
-
-$Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
-$OKButton = New-Object System.Windows.Forms.Button
-$OKButton.Location = New-Object System.Drawing.Size(10,500)
-$OKButton.Size = New-Object System.Drawing.Size(180,40)
-$OKButton.Text = "OK"
-$OKButton.Font = $Buttonfont
-$OKButton.BackColor = "Gainsboro"
-
-$OKButton.Add_Click(
-  {    
-      $objForm.DialogResult = "OK"
-      $objForm.Close()
- })
-
-$objForm.Controls.Add($OKButton)
-
-$CancelButton = New-Object System.Windows.Forms.Button
-$CancelButton.Location = New-Object System.Drawing.Size(200,500)
-$CancelButton.Size = New-Object System.Drawing.Size(180,40)
-$CancelButton.Text = "Cancel"
-$CancelButton.Font = $Buttonfont
-$CancelButton.BackColor = "Gainsboro"
-
-$CancelButton.Add_Click({$objForm.Close()})
-$objForm.Controls.Add($CancelButton)
-
-$objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
-$objLabel = New-Object System.Windows.Forms.Label
-$objLabel.Location = New-Object System.Drawing.Size(10,20) 
-$objLabel.AutoSize = $True
-$objLabel.BackColor = "Transparent"
-$objLabel.ForeColor = "White"
-$objLabel.Font = $objFont
-$objLabel.Text = "Please Rename Following Resources"
-$objForm.Controls.Add($objLabel) 
-
-$objListbox = New-Object System.Windows.Forms.DataGridView -Property @{
-  ColumnHeadersVisible = $true
-  RowHeadersVisible = $false
-  location = New-Object System.Drawing.Size(10,70)
-  Size = New-Object System.Drawing.Size(750,420)
-  AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
-  EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
-  Height = 320
-  Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
-  AllowUserToAddRows = $false
-}
-
-$objListbox.ColumnCount = 5
-
-$objListbox.EnableHeadersVisualStyles = $false
-$objListbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
-$objListbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
-  
-$objListbox.Columns[0].Name = "ResourceType"
-$objListbox.Columns[0].ReadOnly = $True
-$objListbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
-
-$objListbox.Columns[1].Name = "SoureResourceGroup"
-$objListbox.Columns[1].ReadOnly = $True
-$objListbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
-  
-$objListbox.Columns[2].Name = "DestinationResourceGroup"
-$objListbox.Columns[2].DefaultCellStyle.BackColor = "White"
-
-$objListbox.Columns[3].Name = "SourceName"
-$objListbox.Columns[3].ReadOnly = $True
-$objListbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
-  
-$objListbox.Columns[4].Name = "DestinationName"
-$objListbox.Columns[4].DefaultCellStyle.BackColor = "White"
-
-$vmResources | ForEach { $objListbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceResourceGroup, $_.SourceName, $_.SourceName )  } | Out-Null
-
-  
-$objForm.Controls.Add($objListbox) 
-
-$objForm.Add_Shown({$objForm.Activate()})
-
-[void] $objForm.ShowDialog()
-
-if ( $objForm.DialogResult -eq "OK" ) {
-
-  $renameInfos = @()
-  for ( $i = 0; $i -lt $objListbox.RowCount; $i ++ )
+  Class ResourceProfile
   {
-    $renameInfo = New-Object ResourceProfile
-    $renameInfo.ResourceType = $objListbox.Rows[$i].Cells[0].Value
-    $renameInfo.SourceResourceGroup = $objListbox.Rows[$i].Cells[1].Value
-    $renameInfo.DestinationResourceGroup = $objListbox.Rows[$i].Cells[2].Value
-    $renameInfo.SourceName = $objListbox.Rows[$i].Cells[3].Value
-    $renameInfo.DestinationName = $objListbox.Rows[$i].Cells[4].Value
-    
-    $renameInfos += $renameInfo
+    [String] $ResourceType
+    [String] $SourceResourceGroup
+    [String] $DestinationResourceGroup
+    [String] $SourceName
+    [String] $DestinationName
+    [String] $DnsName
   }
 
-  $objForm.Dispose()
-}
-else
-{
-  $objForm.Dispose()
-  Break
-}
+  Function Rename {
+    Param(
+      [Parameter(Mandatory=$True)]
+      [AllowNull()]
+      [Object[]] 
+      $vmResources
+    )
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+    $objForm = New-Object System.Windows.Forms.Form 
+    $objForm.Text = "Azure Global Connection Center"
+    $objForm.Size = New-Object System.Drawing.Size(800,600) 
+    $objForm.StartPosition = "CenterScreen"
 
-return $renameInfos
-}
+    $objForm.KeyPreview = $True
+    $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
+        {
+          $objForm.DialogResult = "OK"
+          $objForm.Close()
+        }
+    })
+
+    $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
+    {$objForm.Close()}})
+
+    $objForm.BackColor = "#1F4E79"
+
+    $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
+    $OKButton = New-Object System.Windows.Forms.Button
+    $OKButton.Location = New-Object System.Drawing.Size(10,500)
+    $OKButton.Size = New-Object System.Drawing.Size(180,40)
+    $OKButton.Text = "OK"
+    $OKButton.Font = $Buttonfont
+    $OKButton.BackColor = "Gainsboro"
+
+    $OKButton.Add_Click(
+      {    
+        $objForm.DialogResult = "OK"
+        $objForm.Close()
+    })
+
+    $objForm.Controls.Add($OKButton)
+
+    $CancelButton = New-Object System.Windows.Forms.Button
+    $CancelButton.Location = New-Object System.Drawing.Size(200,500)
+    $CancelButton.Size = New-Object System.Drawing.Size(180,40)
+    $CancelButton.Text = "Cancel"
+    $CancelButton.Font = $Buttonfont
+    $CancelButton.BackColor = "Gainsboro"
+
+    $CancelButton.Add_Click({$objForm.Close()})
+    $objForm.Controls.Add($CancelButton)
+
+    $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
+    $objLabel = New-Object System.Windows.Forms.Label
+    $objLabel.Location = New-Object System.Drawing.Size(10,20) 
+    $objLabel.AutoSize = $True
+    $objLabel.BackColor = "Transparent"
+    $objLabel.ForeColor = "White"
+    $objLabel.Font = $objFont
+    $objLabel.Text = "Please Check the Name of Following Resources"
+    $objForm.Controls.Add($objLabel) 
+
+    $objFont2 = New-Object System.Drawing.Font("Arial",10,[System.Drawing.FontStyle]::Regular)
+    $objLabel2 = New-Object System.Windows.Forms.Label
+    $objLabel2.Location = New-Object System.Drawing.Size(10,55) 
+    $objLabel2.AutoSize = $True
+    $objLabel2.BackColor = "Transparent"
+    $objLabel2.ForeColor = "LightSteelBlue"
+    $objLabel2.Font = $objFont2
+    $objLabel2.Text = "Resource List"
+    $objForm.Controls.Add($objLabel2) 
+
+    $objListbox = New-Object System.Windows.Forms.DataGridView -Property @{
+      ColumnHeadersVisible = $true
+      RowHeadersVisible = $false
+      location = New-Object System.Drawing.Size(10,80)
+      Size = New-Object System.Drawing.Size(750,220)
+      AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+      EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
+      Height = 320
+      Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
+      AllowUserToAddRows = $false
+    }
+
+    $objListbox.ColumnCount = 5
+
+    $objListbox.EnableHeadersVisualStyles = $false
+    $objListbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
+    $objListbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
+  
+    $objListbox.Columns[0].Name = "ResourceType"
+    $objListbox.Columns[0].ReadOnly = $True
+    $objListbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
+
+    $objListbox.Columns[1].Name = "SoureResourceGroup"
+    $objListbox.Columns[1].ReadOnly = $True
+    $objListbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
+  
+    $objListbox.Columns[2].Name = "DestinationResourceGroup"
+    $objListbox.Columns[2].DefaultCellStyle.BackColor = "White"
+
+    $objListbox.Columns[3].Name = "SourceName"
+    $objListbox.Columns[3].ReadOnly = $True
+    $objListbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
+  
+    $objListbox.Columns[4].Name = "DestinationName"
+    $objListbox.Columns[4].DefaultCellStyle.BackColor = "White"
+
+    $vmResources | ForEach { $objListbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceResourceGroup, $_.SourceName, $_.SourceName )  } | Out-Null
+  
+    $objForm.Controls.Add($objListbox) 
+    
+    $objLabel3 = New-Object System.Windows.Forms.Label
+    $objLabel3.Location = New-Object System.Drawing.Size(10,325) 
+    $objLabel3.AutoSize = $True
+    $objLabel3.BackColor = "Transparent"
+    $objLabel3.ForeColor = "LightSteelBlue"
+    $objLabel3.Font = $objFont2
+    $objLabel3.Text = "DNS Name List"
+    $objForm.Controls.Add($objLabel3) 
+        
+    $objDnsbox = New-Object System.Windows.Forms.DataGridView -Property @{
+      ColumnHeadersVisible = $true
+      RowHeadersVisible = $false
+      location = New-Object System.Drawing.Size(10,350)
+      Size = New-Object System.Drawing.Size(750,100)
+      AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+      EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
+      Height = 320
+      Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
+      AllowUserToAddRows = $false
+    }
+    
+    $objDnsbox.ColumnCount = 5
+
+    $objDnsbox.EnableHeadersVisualStyles = $false
+    $objDnsbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
+    $objDnsbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
+  
+    $objDnsbox.Columns[0].Name = "ResourceType"
+    $objDnsbox.Columns[0].ReadOnly = $True
+    $objDnsbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
+
+    $objDnsbox.Columns[1].Name = "SoureResourceGroup"
+    $objDnsbox.Columns[1].ReadOnly = $True
+    $objDnsbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
+
+    $objDnsbox.Columns[2].Name = "SourceName"
+    $objDnsbox.Columns[2].ReadOnly = $True
+    $objDnsbox.Columns[2].DefaultCellStyle.BackColor = "Gainsboro"
+    
+    $objDnsbox.Columns[3].Name = "SourceDNSName"
+    $objDnsbox.Columns[3].ReadOnly = $True
+    $objDnsbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
+    
+    $objDnsbox.Columns[4].Name = "DestinationDNSName"
+    $objDnsbox.Columns[4].DefaultCellStyle.BackColor = "White"
+    
+    $vmResources | Where-Object {$_.ResourceType -eq "publicIPAddresses"} | ForEach { $objDnsbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceName, $_.DNSName, $_.DNSName )  } | Out-Null
+    
+    $objForm.Controls.Add($objDnsbox)
+
+    $objForm.Add_Shown({$objForm.Activate()})
+
+    [void] $objForm.ShowDialog()
+
+    if ( $objForm.DialogResult -eq "OK" ) {
+
+      $renameInfos = @()
+      for ( $i = 0; $i -lt $objListbox.RowCount; $i ++ )
+      {
+        $renameInfo = New-Object ResourceProfile
+        $renameInfo.ResourceType = $objListbox.Rows[$i].Cells[0].Value
+        $renameInfo.SourceResourceGroup = $objListbox.Rows[$i].Cells[1].Value
+        $renameInfo.DestinationResourceGroup = $objListbox.Rows[$i].Cells[2].Value
+        $renameInfo.SourceName = $objListbox.Rows[$i].Cells[3].Value
+        $renameInfo.DestinationName = $objListbox.Rows[$i].Cells[4].Value
+    
+        $renameInfos += $renameInfo
+      }
+      
+      for ( $j = 0; $j -lt $objDnsbox.RowCount; $j ++ )
+      {
+        $DnsResource = $renameInfos | Where-Object { ($_.ResourceType -eq "publicIPAddresses") -and ( $_.SourceResourceGroup -eq  $objDnsbox.Rows[$j].Cells[1].Value) -and ($_.SourceName -eq  $objDnsbox.Rows[$j].Cells[2].Value) }
+        $DnsResource.DnsName = $objDnsbox.Rows[$j].Cells[4].Value
+      }
+
+      $objForm.Dispose()
+    }
+    else
+    {
+      $objForm.Dispose()
+      Break
+    }
+
+    return $renameInfos
+  }
 }
 $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
 $result = $job | Receive-Job -Wait -AutoRemoveJob
+$resultValidate = $false
+
+While (!$resultValidate)
+{
+  $resultValidate = $True
+
+  foreach ( $r in $result )
+  {
+    if ($r.ResourceType -ne "storageAccounts")
+    {
+      $resultCheck = $result | Where-Object { ($_.ResourceType -eq $r.ResourceType ) -and ( $_.DestinationResourceGroup -eq $r.DestinationResourceGroup ) -and ( $_.DestinationName -eq $r.DestinationName ) }
+      if ( $resultCheck.Count -gt 1 )
+      {
+        Write-Warning ("Name Duplicate: (" + $r.ResourceType + ") Destination Name: " + $r.DestinationName + " Desitnation Resource Group: " + $r.DestinationResourceGroup + " . Please input the destination information again.")
+        $resultValidate = $false
+      }
+    }
+  }
+  if (!$resultValidate)
+  {
+    $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
+    $result = $job | Receive-Job -Wait -AutoRemoveJob
+  }
+}
 
 $renameInfos = @()
 $result | ForEach { 
-    $renameInfo = New-Object ResourceProfile;
-    $renameInfo.ResourceType = $_.ResourceType;
-    $renameInfo.SourceResourceGroup = $_.SourceResourceGroup;
-    $renameInfo.DestinationResourceGroup = $_.DestinationResourceGroup;
-    $renameInfo.SourceName = $_.SourceName;
-    $renameInfo.DestinationName = $_.DestinationName;
-    $renameInfos += $renameInfo;
+    $renameInfo = New-Object ResourceProfile
+    $renameInfo.ResourceType = $_.ResourceType
+    $renameInfo.SourceResourceGroup = $_.SourceResourceGroup
+    $renameInfo.DestinationResourceGroup = $_.DestinationResourceGroup
+    $renameInfo.SourceName = $_.SourceName
+    $renameInfo.DestinationName = $_.DestinationName
+    $renameInfo.DnsName = $_.DnsName
+    
+    $renameInfos += $renameInfo
     }
 return $renameInfos
