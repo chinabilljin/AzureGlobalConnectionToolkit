@@ -1,6 +1,6 @@
 @{
 RootModule = 'CICDTool.psm1'
-ModuleVersion = '0.2.1'
+ModuleVersion = '0.2.2'
 GUID = '6cee1522-3669-4bba-b537-c1b3ae4f10c3'
 Author = 'Microsoft Corporation'
 CompanyName = 'Microsoft Corporation'
