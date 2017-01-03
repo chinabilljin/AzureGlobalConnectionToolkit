@@ -49,7 +49,7 @@ Function MigrationTelemetry
           [Switch] $completed
 
         )
-    $path = $env:USERPROFILE + "\Documents\WindowsPowerShell\Modules\AzureGlobalConnectionToolkit\CICDTool"
+    $path = [environment]::getfolderpath("mydocuments") + "\WindowsPowerShell\Modules\AzureGlobalConnectionToolkit\CICDTool"
 
     #record timespan for each phase
     $dateTime = Get-Date
