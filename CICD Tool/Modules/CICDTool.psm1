@@ -54,12 +54,12 @@ Function MigrationTelemetry
     #record timespan for each phase
     $dateTime = Get-Date
     
-    $duration = If ($timeSpanList.Count -eq 0) {
+    $duration = If ($Script:timeSpanList.Count -eq 0) {
         0
     } else {
-        for($i=$timeSpanList.Count-1;$i -ge 0;$i-- ) {
-            if($timeSpanList[$i].PhaseName -ne $phaseName) {
-                $lastPhaseDateTime = $timeSpanList[$i].DateTime
+        for($i=$Script:timeSpanList.Count-1;$i -ge 0;$i-- ) {
+            if($Script:timeSpanList[$i].PhaseName -ne $phaseName) {
+                $lastPhaseDateTime = $Script:timeSpanList[$i].DateTime
                 break
             }
         }
@@ -94,7 +94,7 @@ Function MigrationTelemetry
     $dic.Add("VmNumberOfDataDisk",$vmProfile.StorageProfile.DataDisks.Count)
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $true} | %{$dic.Add("VmOsDiskSzie",$_.BlobActualBytes)}
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $false} | %{$dic.Add(("VmDataDisk"+$_.Lun+"Size"),$_.BlobActualBytes)}
-    $Global:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | %{
+    $Script:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | %{
       $dic.Add(($_.phaseName+"TimeSpan"),$_.TimeSpan);
       $dic.Add(($_.phaseName+"Status"),$_.PhaseStatus);
     }
