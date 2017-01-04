@@ -179,8 +179,15 @@ foreach($dataDisk in $vm.StorageProfile.DataDisks)
 
 
 ####Rename Function####
-$RenameFunction = 
-{
+$RenameExcute = {
+$Runspace = [runspacefactory]::CreateRunspace()
+$PowerShell = [powershell]::Create()
+$Runspace.ApartmentState = "STA"
+$Runspace.ThreadOptions = "ReuseThread"
+$PowerShell.runspace = $Runspace
+$Runspace.Open()
+[void]$PowerShell.AddScript({
+Param ($Param1, $Param2, $Param3)
   Class ResourceProfile
   {
     [String] $ResourceType
@@ -240,7 +247,7 @@ $RenameFunction =
         $objForm.Close()
     })
 
-    $objForm.Controls.Add($OKButton)
+    $objForm.Controls.Add($OKButton) | Out-Null
 
     $CancelButton = New-Object System.Windows.Forms.Button
     $CancelButton.Location = New-Object System.Drawing.Size(200,500)
@@ -249,8 +256,8 @@ $RenameFunction =
     $CancelButton.Font = $Buttonfont
     $CancelButton.BackColor = "Gainsboro"
 
-    $CancelButton.Add_Click({$objForm.Close()})
-    $objForm.Controls.Add($CancelButton)
+    $CancelButton.Add_Click({$objForm.Close()}) | Out-Null
+    $objForm.Controls.Add($CancelButton) | Out-Null
 
     $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
     $objLabel = New-Object System.Windows.Forms.Label
@@ -260,7 +267,7 @@ $RenameFunction =
     $objLabel.ForeColor = "White"
     $objLabel.Font = $objFont
     $objLabel.Text = "Please Check the Name of Following Resources"
-    $objForm.Controls.Add($objLabel) 
+    $objForm.Controls.Add($objLabel) | Out-Null
 
     $objFont2 = New-Object System.Drawing.Font("Arial",10,[System.Drawing.FontStyle]::Regular)
     $objLabel2 = New-Object System.Windows.Forms.Label
@@ -270,7 +277,7 @@ $RenameFunction =
     $objLabel2.ForeColor = "LightSteelBlue"
     $objLabel2.Font = $objFont2
     $objLabel2.Text = "Resource List"
-    $objForm.Controls.Add($objLabel2) 
+    $objForm.Controls.Add($objLabel2) | Out-Null
 
     $objListbox = New-Object System.Windows.Forms.DataGridView -Property @{
       ColumnHeadersVisible = $true
@@ -310,7 +317,7 @@ $RenameFunction =
 
     $vmResources | ForEach { $objListbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceResourceGroup, $_.SourceName, $_.SourceName )  } | Out-Null
   
-    $objForm.Controls.Add($objListbox) 
+    $objForm.Controls.Add($objListbox) | Out-Null
     
     $objLabel3 = New-Object System.Windows.Forms.Label
     $objLabel3.Location = New-Object System.Drawing.Size(10,310) 
@@ -319,7 +326,7 @@ $RenameFunction =
     $objLabel3.ForeColor = "LightSteelBlue"
     $objLabel3.Font = $objFont2
     $objLabel3.Text = "DNS Name List"
-    $objForm.Controls.Add($objLabel3) 
+    $objForm.Controls.Add($objLabel3) | Out-Null
         
     $objDnsbox = New-Object System.Windows.Forms.DataGridView -Property @{
       ColumnHeadersVisible = $true
@@ -360,7 +367,7 @@ $RenameFunction =
     
     $vmResources | Where-Object {$_.ResourceType -eq "publicIPAddresses"} | ForEach { $objDnsbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceName, $_.DNSName, $_.DNSName )  } | Out-Null
     
-    $objForm.Controls.Add($objDnsbox)
+    $objForm.Controls.Add($objDnsbox) | Out-Null
 
     $objLabel4 = New-Object System.Windows.Forms.Label
     $objLabel4.Location = New-Object System.Drawing.Size(10,395) 
@@ -369,7 +376,7 @@ $RenameFunction =
     $objLabel4.ForeColor = "LightSteelBlue"
     $objLabel4.Font = $objFont2
     $objLabel4.Text = "VM Size"
-    $objForm.Controls.Add($objLabel4) 
+    $objForm.Controls.Add($objLabel4) | Out-Null
         
     $objSizebox = New-Object System.Windows.Forms.DataGridView -Property @{
       ColumnHeadersVisible = $true
@@ -407,11 +414,11 @@ $RenameFunction =
     
 
     $vmSizeColumn = New-Object System.Windows.Forms.DataGridViewComboBoxColumn
-    $objSizebox.Columns.Add($vmSizeColumn)
+    $objSizebox.Columns.Add($vmSizeColumn) | Out-Null
 
     foreach ( $vs in $vmSizeList  )
     {
-      $vmSizeColumn.Items.Add($vs.name)
+      $vmSizeColumn.Items.Add($vs.name) | Out-Null
     }
     
     $vmSizeColumn.Name = "DestinationVmSize"
@@ -419,7 +426,7 @@ $RenameFunction =
 
     $vmResources | Where-Object {$_.ResourceType -eq "virtualMachines"} | ForEach { $objSizebox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceName, $vmSize)  } | Out-Null
     
-    $objForm.Controls.Add($objSizebox)
+    $objForm.Controls.Add($objSizebox) | Out-Null
 
     $objForm.Add_Shown({$objForm.Activate()})
 
@@ -458,10 +465,15 @@ $RenameFunction =
 
     
   }
+        Rename -vmResources $Param1 -vmSize $Param2 -vmSizeList $Param3
+
+    }).AddArgument($args[0]).AddArgument($args[1]).AddArgument($args[2])
+    return $PowerShell.Invoke()
 }
+
 $vmSizeList = Get-AzureRmVMSize -Location eastasia | Select-Object -Property Name
 
-$job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args[0] -vmSize $args[1] -vmSizeList $args[2]} -ArgumentList $Script:vmResources, $vm.HardwareProfile.VmSize, $vmSizeList
+$job = Start-Job -ScriptBlock $RenameExcute -ArgumentList $Script:vmResources, $vm.HardwareProfile.VmSize, $vmSizeList
 $result = $job | Receive-Job -Wait -AutoRemoveJob
 
 $resultValidate = $false
@@ -484,7 +496,7 @@ While (!$resultValidate)
   }
   if (!$resultValidate)
   {
-    $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args[0] -vmSize $args[1]} -ArgumentList $Script:vmResources, $vm.HardwareProfile.VmSize
+    $job = Start-Job -ScriptBlock $RenameExcute -ArgumentList $Script:vmResources, $vm.HardwareProfile.VmSize, $vmSizeList
     $result = $job | Receive-Job -Wait -AutoRemoveJob
   }
 }
