@@ -194,10 +194,18 @@ $RenameFunction =
   Function Rename {
     Param(
       [Parameter(Mandatory=$True)]
-      [AllowNull()]
       [Object[]] 
-      $vmResources
+      $vmResources,
+
+      [Parameter(Mandatory=$True)]
+      [string] $vmSize,
+
+      [Parameter(Mandatory=$True)]
+      [Object[]] 
+      $vmSizeList
     )
+
+
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
     $objForm = New-Object System.Windows.Forms.Form 
@@ -268,7 +276,7 @@ $RenameFunction =
       ColumnHeadersVisible = $true
       RowHeadersVisible = $false
       location = New-Object System.Drawing.Size(10,80)
-      Size = New-Object System.Drawing.Size(750,220)
+      Size = New-Object System.Drawing.Size(750,210)
       AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
       EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
       Height = 320
@@ -305,7 +313,7 @@ $RenameFunction =
     $objForm.Controls.Add($objListbox) 
     
     $objLabel3 = New-Object System.Windows.Forms.Label
-    $objLabel3.Location = New-Object System.Drawing.Size(10,325) 
+    $objLabel3.Location = New-Object System.Drawing.Size(10,310) 
     $objLabel3.AutoSize = $True
     $objLabel3.BackColor = "Transparent"
     $objLabel3.ForeColor = "LightSteelBlue"
@@ -316,8 +324,8 @@ $RenameFunction =
     $objDnsbox = New-Object System.Windows.Forms.DataGridView -Property @{
       ColumnHeadersVisible = $true
       RowHeadersVisible = $false
-      location = New-Object System.Drawing.Size(10,350)
-      Size = New-Object System.Drawing.Size(750,100)
+      location = New-Object System.Drawing.Size(10,335)
+      Size = New-Object System.Drawing.Size(750,45)
       AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
       EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
       Height = 320
@@ -354,6 +362,65 @@ $RenameFunction =
     
     $objForm.Controls.Add($objDnsbox)
 
+    $objLabel4 = New-Object System.Windows.Forms.Label
+    $objLabel4.Location = New-Object System.Drawing.Size(10,395) 
+    $objLabel4.AutoSize = $True
+    $objLabel4.BackColor = "Transparent"
+    $objLabel4.ForeColor = "LightSteelBlue"
+    $objLabel4.Font = $objFont2
+    $objLabel4.Text = "VM Size"
+    $objForm.Controls.Add($objLabel4) 
+        
+    $objSizebox = New-Object System.Windows.Forms.DataGridView -Property @{
+      ColumnHeadersVisible = $true
+      RowHeadersVisible = $false
+      location = New-Object System.Drawing.Size(10,415)
+      Size = New-Object System.Drawing.Size(750,45)
+      AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+      EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
+      Height = 320
+      Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
+      AllowUserToAddRows = $false
+    }
+    
+    $objSizebox.ColumnCount = 4
+
+    $objSizebox.EnableHeadersVisualStyles = $false
+    $objSizebox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
+    $objSizebox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
+  
+    $objSizebox.Columns[0].Name = "ResourceType"
+    $objSizebox.Columns[0].ReadOnly = $True
+    $objSizebox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
+
+    $objSizebox.Columns[1].Name = "SoureResourceGroup"
+    $objSizebox.Columns[1].ReadOnly = $True
+    $objSizebox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
+
+    $objSizebox.Columns[2].Name = "SourceVmName"
+    $objSizebox.Columns[2].ReadOnly = $True
+    $objSizebox.Columns[2].DefaultCellStyle.BackColor = "Gainsboro"
+    
+    $objSizebox.Columns[3].Name = "SourceVmSize"
+    $objSizebox.Columns[3].ReadOnly = $True
+    $objSizebox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
+    
+
+    $vmSizeColumn = New-Object System.Windows.Forms.DataGridViewComboBoxColumn
+    $objSizebox.Columns.Add($vmSizeColumn)
+
+    foreach ( $vs in $vmSizeList  )
+    {
+      $vmSizeColumn.Items.Add($vs.name)
+    }
+    
+    $vmSizeColumn.Name = "DestinationVmSize"
+
+
+    $vmResources | Where-Object {$_.ResourceType -eq "virtualMachines"} | ForEach { $objSizebox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceName, $vmSize)  } | Out-Null
+    
+    $objForm.Controls.Add($objSizebox)
+
     $objForm.Add_Shown({$objForm.Activate()})
 
     [void] $objForm.ShowDialog()
@@ -380,18 +447,23 @@ $RenameFunction =
       }
 
       $objForm.Dispose()
+      return $renameInfos
     }
     else
     {
       $objForm.Dispose()
-      Break
+
+      break
     }
 
-    return $renameInfos
+    
   }
 }
-$job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
+$vmSizeList = Get-AzureRmVMSize -Location eastasia | Select-Object -Property Name
+
+$job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args[0] -vmSize $args[1] -vmSizeList $args[2]} -ArgumentList $Script:vmResources, $vm.HardwareProfile.VmSize, $vmSizeList
 $result = $job | Receive-Job -Wait -AutoRemoveJob
+
 $resultValidate = $false
 
 While (!$resultValidate)
@@ -400,7 +472,7 @@ While (!$resultValidate)
 
   foreach ( $r in $result )
   {
-    if ($r.ResourceType -ne "storageAccounts")
+    if (($r.ResourceType -ne "storageAccounts") -and (!([string]::IsNullOrEmpty($r.ResourceType))))
     {
       $resultCheck = $result | Where-Object { ($_.ResourceType -eq $r.ResourceType ) -and ( $_.DestinationResourceGroup -eq $r.DestinationResourceGroup ) -and ( $_.DestinationName -eq $r.DestinationName ) }
       if ( $resultCheck.Count -gt 1 )
@@ -412,7 +484,7 @@ While (!$resultValidate)
   }
   if (!$resultValidate)
   {
-    $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
+    $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args[0] -vmSize $args[1]} -ArgumentList $Script:vmResources, $vm.HardwareProfile.VmSize
     $result = $job | Receive-Job -Wait -AutoRemoveJob
   }
 }
