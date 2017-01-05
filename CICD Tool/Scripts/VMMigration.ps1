@@ -539,7 +539,7 @@ Function MigrationTelemetry {
     {
       Try
       {
-        $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext
+        $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
       }
       Catch
       {

@@ -6,7 +6,11 @@
   [String] $targetLocation,
 
   [Parameter(Mandatory=$true)]
-  [PSObject] $SrcContext
+  [PSObject] $SrcContext,
+
+  [Parameter(Mandatory=$true)]
+  [PSObject] $DestContext
+
 )
 
 ##Parameter Type Check
@@ -34,6 +38,7 @@ Class ResourceProfile
    [String] $SourceName
    [String] $DestinationName
    [String] $DnsName
+   [String] $VmSize
 }
 
 Function Add-ResourceList
@@ -196,6 +201,7 @@ Param ($Param1, $Param2, $Param3)
     [String] $SourceName
     [String] $DestinationName
     [String] $DnsName
+    [String] $VmSize
   }
 
   Function Rename {
@@ -452,7 +458,11 @@ Param ($Param1, $Param2, $Param3)
         $DnsResource = $renameInfos | Where-Object { ($_.ResourceType -eq "publicIPAddresses") -and ( $_.SourceResourceGroup -eq  $objDnsbox.Rows[$j].Cells[1].Value) -and ($_.SourceName -eq  $objDnsbox.Rows[$j].Cells[2].Value) }
         $DnsResource.DnsName = $objDnsbox.Rows[$j].Cells[4].Value
       }
-
+      for ( $j = 0; $j -lt $objSizebox.RowCount; $j ++ )
+      {
+        $VmResource = $renameInfos | Where-Object { ($_.ResourceType -eq "virtualMachines") -and ( $_.SourceResourceGroup -eq  $objSizebox.Rows[$j].Cells[1].Value) -and ($_.SourceName -eq  $objSizebox.Rows[$j].Cells[2].Value) }
+        $VmResource.VmSize = $objSizebox.Rows[$j].Cells[4].Value
+      }
       $objForm.Dispose()
       return $renameInfos
     }
@@ -471,7 +481,9 @@ Param ($Param1, $Param2, $Param3)
     return $PowerShell.Invoke()
 }
 
-$vmSizeList = Get-AzureRmVMSize -Location eastasia | Select-Object -Property Name
+Set-AzureRmContext -Context $DestContext | Out-Null
+$vmSizeList = Get-AzureRmVMSize -Location $targetLocation | Select-Object -Property Name
+Set-AzureRmContext -Context $SrcContext | Out-Null
 
 $job = Start-Job -ScriptBlock $RenameExcute -ArgumentList $Script:vmResources, $vm.HardwareProfile.VmSize, $vmSizeList
 $result = $job | Receive-Job -Wait -AutoRemoveJob
@@ -510,7 +522,7 @@ $result | ForEach {
     $renameInfo.SourceName = $_.SourceName
     $renameInfo.DestinationName = $_.DestinationName
     $renameInfo.DnsName = $_.DnsName
-    
+    $renameInfo.VmSize = $_.VmSize
     $renameInfos += $renameInfo
     }
 return $renameInfos
