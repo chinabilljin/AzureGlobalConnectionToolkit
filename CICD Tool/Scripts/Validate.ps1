@@ -71,6 +71,7 @@ Class ResourceProfile
   [String] $SourceName
   [String] $DestinationName
   [String] $DnsName
+  [String] $VmSize
 }
 
 ####Get VM Components####
@@ -98,7 +99,7 @@ else
     {
       if ($resource.ResourceType -eq "publicIPAddresses")
       {
-        $pip = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
+        $pip = Get-AzureRmPublicIpAddress -Name $resource.DestinationName -ResourceGroupName $resource.DestinationResourceGroup
         $resource.DnsName = $pip.DnsSettings.DomainNameLabel
       }
       $Script:vmResources += $resource
@@ -317,7 +318,18 @@ if(!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignmen
 Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Quota" -percentComplete 30
 Set-AzureRmContext -Context $DestContext | Out-Null
 
-$vmHardwareProfile = Get-AzureRmVmSize -Location $targetLocation | Where-Object{$_.Name -eq $vm.HardwareProfile.VmSize}
+$targetVmResource = $vmResources | Where-Object { $_.ResourceType -eq "virtualMachines" }
+if (!([string]::IsNullOrEmpty($targetVmResource.VmSize)))
+{
+  $destinationVmSize= $targetVmResource.VmSize
+}
+else
+{
+  $destinationVmSize = $vm.HardwareProfile.VmSize
+}
+
+$vmHardwareProfile = Get-AzureRmVmSize -Location $targetLocation | Where-Object{$_.Name -eq $destinationVmSize}
+
 if($vmHardwareProfile -eq $null)
 {
     Add-ResultList -result "Failed" -detail ("Target location: " + $targetLocation + " doesn't have VM type: " + $vm.HardwareProfile.VmSize)
@@ -376,6 +388,29 @@ foreach ( $resource in $vmResources)
   }
 }
 
+#VM Size check for premium storage
+Set-AzureRmContext -Context $SrcContext | Out-Null
+Foreach ($storage in $storageAccountNames)
+{
+  $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage}
+
+  if ( $storageCheck -eq $null )
+  {
+    Throw ("The storage account: " + $storage + " does not exit in source subscription. Please verify again")
+  }
+  elseif ( $storageCheck.sku.Tier -eq "Premium" )
+  {
+    $vmSizeSupportPremium = "Standard_DS1_v2", "Standard_DS2_v2", "Standard_DS3_v2", "Standard_DS4_v2", "Standard_DS5_v2", "Standard_DS11_v2", "Standard_DS12_v2",  "Standard_DS13_v2",  "Standard_DS14_v2", `
+     "Standard_DS15_v2",  "Standard_DS1", "Standard_DS2", "Standard_DS3", "Standard_DS4", "Standard_DS11", "Standard_DS12",  "Standard_DS13",  "Standard_DS14",  "Standard_GS1", "Standard_GS2", "Standard_GS3", "Standard_GS4",`
+     "Standard_GS5",  "Standard_F1s", "Standard_F2s", "Standard_F4s", "Standard_F8s", "Standard_F16s", "Standard_L4s",  "Standard_L8s",  "Standard_L16s",  "Standard_L32s"
+    if ( $vmSizeSupportPremium -notcontains $destinationVmSize)
+    {
+      Throw "The VM uses Premium storage which the VM Size you select does not support. Please change a different VM size support Premium storage."
+    }
+  }
+
+}
+
 Set-AzureRmContext -Context $DestContext | Out-Null
 Foreach ($storage in $storageAccountNames)
 {
@@ -432,17 +467,14 @@ foreach ( $resource in $vmResources)
           "virtualMachines" {$resourceResult = "Failed"} 
           "availabilitySets" {$resourceResult = "Failed"}
           "networkInterfaces" {$resourceResult = "Failed"}
-          "loadBalancers" {$resourceResult = "SucceedWithWarning"}
-          "publicIPAddresses" {$resourceResult = "SucceedWithWarning"}
+          "publicIPAddresses" {$resourceResult = "Failed"}
+          "loadBalancers" {$resourceResult = "SucceedWithWarning"}          
           "virtualNetworks" {$resourceResult = "SucceedWithWarning"}
           "networkSecurityGroups" {$resourceResult = "SucceedWithWarning"}
           "storageAccounts" {$resourceResult = "SucceedWithWarning"}
       }
       Add-ResultList -result $resourceResult -detail ("The resource:" + $resource.DestinationName +  " (type: "+$resource.ResourceType+") in Resource Group: " + $resource.DestinationResourceGroup + " already exists in destination.")
   }
-    
-
-
 }
 
 Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Complete" -percentComplete 100

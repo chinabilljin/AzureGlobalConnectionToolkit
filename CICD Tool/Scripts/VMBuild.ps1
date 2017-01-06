@@ -75,6 +75,7 @@ Class ResourceProfile
    [String] $SourceName
    [String] $DestinationName
    [String] $DnsName
+   [String] $VmSize
 }
 
 
@@ -111,6 +112,11 @@ if ( $RenameInfos.Count -eq 0)
    
     if ( $resourceCheck -eq $null )
     {
+      if ($resource.ResourceType -eq "publicIPAddresses")
+      {
+        $pip = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
+        $resource.DnsName = $pip.DnsSettings.DomainNameLabel
+      }
       $Script:vmResources += $resource
     }
     
@@ -327,6 +333,12 @@ ForEach ( $resource in $vmResources )
         if (!($c.properties.availabilitySet -eq $null)) {
           $crsprop | Add-Member -Name "availabilitySet" -MemberType NoteProperty -Value $c.properties.availabilitySet
         }
+
+        if (!([string]::IsNullOrEmpty($resource.VmSize)))
+        {
+          $crsprop.hardwareProfile.vmSize = $resource.VmSize
+        }
+
 
         $crsDeps = @()
 
