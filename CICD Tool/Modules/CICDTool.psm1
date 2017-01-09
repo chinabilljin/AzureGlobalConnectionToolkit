@@ -182,6 +182,7 @@ function Start-AzureRmVMMigrationValidate
     [String] $SourceName
     [String] $DestinationName
     [String] $DnsName
+    [String] $VmSize
   }
 
   ####Get VM Components####
@@ -209,7 +210,7 @@ function Start-AzureRmVMMigrationValidate
       {
         if ($resource.ResourceType -eq "publicIPAddresses")
         {
-          $pip = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
+          $pip = Get-AzureRmPublicIpAddress -Name $resource.DestinationName -ResourceGroupName $resource.DestinationResourceGroup
           $resource.DnsName = $pip.DnsSettings.DomainNameLabel
         }
         $Script:vmResources += $resource
@@ -428,12 +429,22 @@ function Start-AzureRmVMMigrationValidate
   Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Quota" -percentComplete 30
   Set-AzureRmContext -Context $DestContext | Out-Null
 
-  $vmHardwareProfile = Get-AzureRmVmSize -Location $targetLocation | Where-Object{$_.Name -eq $vm.HardwareProfile.VmSize}
+  $targetVmResource = $vmResources | Where-Object { $_.ResourceType -eq "virtualMachines" }
+  if (!([string]::IsNullOrEmpty($targetVmResource.VmSize)))
+  {
+    $destinationVmSize= $targetVmResource.VmSize
+  }
+  else
+  {
+    $destinationVmSize = $vm.HardwareProfile.VmSize
+  }
+
+  $vmHardwareProfile = Get-AzureRmVmSize -Location $targetLocation | Where-Object{$_.Name -eq $destinationVmSize}
+
   if($vmHardwareProfile -eq $null)
   {
     Add-ResultList -result "Failed" -detail ("Target location: " + $targetLocation + " doesn't have VM type: " + $vm.HardwareProfile.VmSize)
   }
-  
   $vmCoreNumber = $vmHardwareProfile.NumberOfCores
 
   $vmCoreFamily = Get-AzureRmVmCoreFamily -VmSize $vm.HardwareProfile.VmSize
@@ -486,6 +497,29 @@ function Start-AzureRmVMMigrationValidate
         $storageAccountNames += $resource.DestinationName
       }
     }
+  }
+
+  #VM Size check for premium storage
+  Set-AzureRmContext -Context $SrcContext | Out-Null
+  Foreach ($storage in $storageAccountNames)
+  {
+    $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage}
+
+    if ( $storageCheck -eq $null )
+    {
+      Throw ("The storage account: " + $storage + " does not exit in source subscription. Please verify again")
+    }
+    elseif ( $storageCheck.sku.Tier -eq "Premium" )
+    {
+      $vmSizeSupportPremium = "Standard_DS1_v2", "Standard_DS2_v2", "Standard_DS3_v2", "Standard_DS4_v2", "Standard_DS5_v2", "Standard_DS11_v2", "Standard_DS12_v2",  "Standard_DS13_v2",  "Standard_DS14_v2", `
+      "Standard_DS15_v2",  "Standard_DS1", "Standard_DS2", "Standard_DS3", "Standard_DS4", "Standard_DS11", "Standard_DS12",  "Standard_DS13",  "Standard_DS14",  "Standard_GS1", "Standard_GS2", "Standard_GS3", "Standard_GS4",`
+      "Standard_GS5",  "Standard_F1s", "Standard_F2s", "Standard_F4s", "Standard_F8s", "Standard_F16s", "Standard_L4s",  "Standard_L8s",  "Standard_L16s",  "Standard_L32s"
+      if ( $vmSizeSupportPremium -notcontains $destinationVmSize)
+      {
+        Throw "The VM uses Premium storage which the VM Size you select does not support. Please change a different VM size support Premium storage."
+      }
+    }
+
   }
 
   Set-AzureRmContext -Context $DestContext | Out-Null
@@ -544,17 +578,14 @@ function Start-AzureRmVMMigrationValidate
           "virtualMachines" {$resourceResult = "Failed"} 
           "availabilitySets" {$resourceResult = "Failed"}
           "networkInterfaces" {$resourceResult = "Failed"}
-          "loadBalancers" {$resourceResult = "SucceedWithWarning"}
-          "publicIPAddresses" {$resourceResult = "SucceedWithWarning"}
+          "publicIPAddresses" {$resourceResult = "Failed"}
+          "loadBalancers" {$resourceResult = "SucceedWithWarning"}          
           "virtualNetworks" {$resourceResult = "SucceedWithWarning"}
           "networkSecurityGroups" {$resourceResult = "SucceedWithWarning"}
           "storageAccounts" {$resourceResult = "SucceedWithWarning"}
       }
       Add-ResultList -result $resourceResult -detail ("The resource:" + $resource.DestinationName +  " (type: "+$resource.ResourceType+") in Resource Group: " + $resource.DestinationResourceGroup + " already exists in destination.")
     }
-    
-
-
   }
 
   Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Complete" -percentComplete 100
@@ -1292,6 +1323,7 @@ function Start-AzureRmVMMigrationBuild
     [String] $SourceName
     [String] $DestinationName
     [String] $DnsName
+    [String] $VmSize
   }
 
 
@@ -1328,6 +1360,11 @@ function Start-AzureRmVMMigrationBuild
    
       if ( $resourceCheck -eq $null )
       {
+        if ($resource.ResourceType -eq "publicIPAddresses")
+        {
+          $pip = Get-AzureRmPublicIpAddress -Name $resource.SourceName -ResourceGroupName $resource.SourceResourceGroup
+          $resource.DnsName = $pip.DnsSettings.DomainNameLabel
+        }
         $Script:vmResources += $resource
       }
     
@@ -1544,6 +1581,12 @@ function Start-AzureRmVMMigrationBuild
           if (!($c.properties.availabilitySet -eq $null)) {
             $crsprop | Add-Member -Name "availabilitySet" -MemberType NoteProperty -Value $c.properties.availabilitySet
           }
+
+          if (!([string]::IsNullOrEmpty($resource.VmSize)))
+          {
+            $crsprop.hardwareProfile.vmSize = $resource.VmSize
+          }
+
 
           $crsDeps = @()
 
@@ -1885,7 +1928,11 @@ Function Set-AzureRmVMMigrationRename
     [String] $targetLocation,
 
     [Parameter(Mandatory=$true)]
-    [PSObject] $SrcContext
+    [PSObject] $SrcContext,
+
+    [Parameter(Mandatory=$true)]
+    [PSObject] $DestContext
+
   )
 
   ##Parameter Type Check
@@ -1913,6 +1960,7 @@ Function Set-AzureRmVMMigrationRename
     [String] $SourceName
     [String] $DestinationName
     [String] $DnsName
+    [String] $VmSize
   }
 
   Function Add-ResourceList
@@ -2058,219 +2106,310 @@ Function Set-AzureRmVMMigrationRename
 
 
   ####Rename Function####
-  $RenameFunction = 
-  {
-    Class ResourceProfile
-    {
-      [String] $ResourceType
-      [String] $SourceResourceGroup
-      [String] $DestinationResourceGroup
-      [String] $SourceName
-      [String] $DestinationName
-      [String] $DnsName
-    }
+  $RenameExcute = {
+    $Runspace = [runspacefactory]::CreateRunspace()
+    $PowerShell = [powershell]::Create()
+    $Runspace.ApartmentState = "STA"
+    $Runspace.ThreadOptions = "ReuseThread"
+    $PowerShell.runspace = $Runspace
+    $Runspace.Open()
+    [void]$PowerShell.AddScript({
+        Param ($Param1, $Param2, $Param3)
+        Class ResourceProfile
+        {
+          [String] $ResourceType
+          [String] $SourceResourceGroup
+          [String] $DestinationResourceGroup
+          [String] $SourceName
+          [String] $DestinationName
+          [String] $DnsName
+          [String] $VmSize
+        }
 
-    Function Rename {
-      Param(
-        [Parameter(Mandatory=$True)]
-        [AllowNull()]
-        [Object[]] 
-        $vmResources
-      )
-      Add-Type -AssemblyName System.Windows.Forms
-      Add-Type -AssemblyName System.Drawing
-      $objForm = New-Object System.Windows.Forms.Form 
-      $objForm.Text = "Azure Global Connection Center"
-      $objForm.Size = New-Object System.Drawing.Size(800,600) 
-      $objForm.StartPosition = "CenterScreen"
+        Function Rename {
+          Param(
+            [Parameter(Mandatory=$True)]
+            [Object[]] 
+            $vmResources,
 
-      $objForm.KeyPreview = $True
-      $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
-          {
-            $objForm.DialogResult = "OK"
-            $objForm.Close()
+            [Parameter(Mandatory=$True)]
+            [string] $vmSize,
+
+            [Parameter(Mandatory=$True)]
+            [Object[]] 
+            $vmSizeList
+          )
+
+
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          $objForm = New-Object System.Windows.Forms.Form 
+          $objForm.Text = "Azure Global Connection Center"
+          $objForm.Size = New-Object System.Drawing.Size(800,600) 
+          $objForm.StartPosition = "CenterScreen"
+
+          $objForm.KeyPreview = $True
+          $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
+              {
+                $objForm.DialogResult = "OK"
+                $objForm.Close()
+              }
+          })
+
+          $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
+          {$objForm.Close()}})
+
+          $objForm.BackColor = "#1F4E79"
+
+          $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
+          $OKButton = New-Object System.Windows.Forms.Button
+          $OKButton.Location = New-Object System.Drawing.Size(10,500)
+          $OKButton.Size = New-Object System.Drawing.Size(180,40)
+          $OKButton.Text = "OK"
+          $OKButton.Font = $Buttonfont
+          $OKButton.BackColor = "Gainsboro"
+
+          $OKButton.Add_Click(
+            {    
+              $objForm.DialogResult = "OK"
+              $objForm.Close()
+          })
+
+          $objForm.Controls.Add($OKButton) | Out-Null
+
+          $CancelButton = New-Object System.Windows.Forms.Button
+          $CancelButton.Location = New-Object System.Drawing.Size(200,500)
+          $CancelButton.Size = New-Object System.Drawing.Size(180,40)
+          $CancelButton.Text = "Cancel"
+          $CancelButton.Font = $Buttonfont
+          $CancelButton.BackColor = "Gainsboro"
+
+          $CancelButton.Add_Click({$objForm.Close()}) | Out-Null
+          $objForm.Controls.Add($CancelButton) | Out-Null
+
+          $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
+          $objLabel = New-Object System.Windows.Forms.Label
+          $objLabel.Location = New-Object System.Drawing.Size(10,20) 
+          $objLabel.AutoSize = $True
+          $objLabel.BackColor = "Transparent"
+          $objLabel.ForeColor = "White"
+          $objLabel.Font = $objFont
+          $objLabel.Text = "Please Check the Name of Following Resources"
+          $objForm.Controls.Add($objLabel) | Out-Null
+
+          $objFont2 = New-Object System.Drawing.Font("Arial",10,[System.Drawing.FontStyle]::Regular)
+          $objLabel2 = New-Object System.Windows.Forms.Label
+          $objLabel2.Location = New-Object System.Drawing.Size(10,55) 
+          $objLabel2.AutoSize = $True
+          $objLabel2.BackColor = "Transparent"
+          $objLabel2.ForeColor = "LightSteelBlue"
+          $objLabel2.Font = $objFont2
+          $objLabel2.Text = "Resource List"
+          $objForm.Controls.Add($objLabel2) | Out-Null
+
+          $objListbox = New-Object System.Windows.Forms.DataGridView -Property @{
+            ColumnHeadersVisible = $true
+            RowHeadersVisible = $false
+            location = New-Object System.Drawing.Size(10,80)
+            Size = New-Object System.Drawing.Size(750,210)
+            AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+            EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
+            Height = 320
+            Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
+            AllowUserToAddRows = $false
           }
-      })
 
-      $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
-      {$objForm.Close()}})
+          $objListbox.ColumnCount = 5
 
-      $objForm.BackColor = "#1F4E79"
-
-      $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
-      $OKButton = New-Object System.Windows.Forms.Button
-      $OKButton.Location = New-Object System.Drawing.Size(10,500)
-      $OKButton.Size = New-Object System.Drawing.Size(180,40)
-      $OKButton.Text = "OK"
-      $OKButton.Font = $Buttonfont
-      $OKButton.BackColor = "Gainsboro"
-
-      $OKButton.Add_Click(
-        {    
-          $objForm.DialogResult = "OK"
-          $objForm.Close()
-      })
-
-      $objForm.Controls.Add($OKButton)
-
-      $CancelButton = New-Object System.Windows.Forms.Button
-      $CancelButton.Location = New-Object System.Drawing.Size(200,500)
-      $CancelButton.Size = New-Object System.Drawing.Size(180,40)
-      $CancelButton.Text = "Cancel"
-      $CancelButton.Font = $Buttonfont
-      $CancelButton.BackColor = "Gainsboro"
-
-      $CancelButton.Add_Click({$objForm.Close()})
-      $objForm.Controls.Add($CancelButton)
-
-      $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
-      $objLabel = New-Object System.Windows.Forms.Label
-      $objLabel.Location = New-Object System.Drawing.Size(10,20) 
-      $objLabel.AutoSize = $True
-      $objLabel.BackColor = "Transparent"
-      $objLabel.ForeColor = "White"
-      $objLabel.Font = $objFont
-      $objLabel.Text = "Please Check the Name of Following Resources"
-      $objForm.Controls.Add($objLabel) 
-
-      $objFont2 = New-Object System.Drawing.Font("Arial",10,[System.Drawing.FontStyle]::Regular)
-      $objLabel2 = New-Object System.Windows.Forms.Label
-      $objLabel2.Location = New-Object System.Drawing.Size(10,55) 
-      $objLabel2.AutoSize = $True
-      $objLabel2.BackColor = "Transparent"
-      $objLabel2.ForeColor = "LightSteelBlue"
-      $objLabel2.Font = $objFont2
-      $objLabel2.Text = "Resource List"
-      $objForm.Controls.Add($objLabel2) 
-
-      $objListbox = New-Object System.Windows.Forms.DataGridView -Property @{
-        ColumnHeadersVisible = $true
-        RowHeadersVisible = $false
-        location = New-Object System.Drawing.Size(10,80)
-        Size = New-Object System.Drawing.Size(750,220)
-        AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
-        EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
-        Height = 320
-        Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
-        AllowUserToAddRows = $false
-      }
-
-      $objListbox.ColumnCount = 5
-
-      $objListbox.EnableHeadersVisualStyles = $false
-      $objListbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
-      $objListbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
+          $objListbox.EnableHeadersVisualStyles = $false
+          $objListbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
+          $objListbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
   
-      $objListbox.Columns[0].Name = "ResourceType"
-      $objListbox.Columns[0].ReadOnly = $True
-      $objListbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
+          $objListbox.Columns[0].Name = "ResourceType"
+          $objListbox.Columns[0].ReadOnly = $True
+          $objListbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
 
-      $objListbox.Columns[1].Name = "SoureResourceGroup"
-      $objListbox.Columns[1].ReadOnly = $True
-      $objListbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
+          $objListbox.Columns[1].Name = "SoureResourceGroup"
+          $objListbox.Columns[1].ReadOnly = $True
+          $objListbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
   
-      $objListbox.Columns[2].Name = "DestinationResourceGroup"
-      $objListbox.Columns[2].DefaultCellStyle.BackColor = "White"
+          $objListbox.Columns[2].Name = "DestinationResourceGroup"
+          $objListbox.Columns[2].DefaultCellStyle.BackColor = "White"
 
-      $objListbox.Columns[3].Name = "SourceName"
-      $objListbox.Columns[3].ReadOnly = $True
-      $objListbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
+          $objListbox.Columns[3].Name = "SourceName"
+          $objListbox.Columns[3].ReadOnly = $True
+          $objListbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
   
-      $objListbox.Columns[4].Name = "DestinationName"
-      $objListbox.Columns[4].DefaultCellStyle.BackColor = "White"
+          $objListbox.Columns[4].Name = "DestinationName"
+          $objListbox.Columns[4].DefaultCellStyle.BackColor = "White"
 
-      $vmResources | ForEach { $objListbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceResourceGroup, $_.SourceName, $_.SourceName )  } | Out-Null
+          $vmResources | ForEach { $objListbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceResourceGroup, $_.SourceName, $_.SourceName )  } | Out-Null
   
-      $objForm.Controls.Add($objListbox) 
+          $objForm.Controls.Add($objListbox) | Out-Null
     
-      $objLabel3 = New-Object System.Windows.Forms.Label
-      $objLabel3.Location = New-Object System.Drawing.Size(10,325) 
-      $objLabel3.AutoSize = $True
-      $objLabel3.BackColor = "Transparent"
-      $objLabel3.ForeColor = "LightSteelBlue"
-      $objLabel3.Font = $objFont2
-      $objLabel3.Text = "DNS Name List"
-      $objForm.Controls.Add($objLabel3) 
+          $objLabel3 = New-Object System.Windows.Forms.Label
+          $objLabel3.Location = New-Object System.Drawing.Size(10,310) 
+          $objLabel3.AutoSize = $True
+          $objLabel3.BackColor = "Transparent"
+          $objLabel3.ForeColor = "LightSteelBlue"
+          $objLabel3.Font = $objFont2
+          $objLabel3.Text = "DNS Name List"
+          $objForm.Controls.Add($objLabel3) | Out-Null
         
-      $objDnsbox = New-Object System.Windows.Forms.DataGridView -Property @{
-        ColumnHeadersVisible = $true
-        RowHeadersVisible = $false
-        location = New-Object System.Drawing.Size(10,350)
-        Size = New-Object System.Drawing.Size(750,100)
-        AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
-        EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
-        Height = 320
-        Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
-        AllowUserToAddRows = $false
-      }
+          $objDnsbox = New-Object System.Windows.Forms.DataGridView -Property @{
+            ColumnHeadersVisible = $true
+            RowHeadersVisible = $false
+            location = New-Object System.Drawing.Size(10,335)
+            Size = New-Object System.Drawing.Size(750,45)
+            AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+            EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
+            Height = 320
+            Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
+            AllowUserToAddRows = $false
+          }
     
-      $objDnsbox.ColumnCount = 5
+          $objDnsbox.ColumnCount = 5
 
-      $objDnsbox.EnableHeadersVisualStyles = $false
-      $objDnsbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
-      $objDnsbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
+          $objDnsbox.EnableHeadersVisualStyles = $false
+          $objDnsbox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
+          $objDnsbox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
   
-      $objDnsbox.Columns[0].Name = "ResourceType"
-      $objDnsbox.Columns[0].ReadOnly = $True
-      $objDnsbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
+          $objDnsbox.Columns[0].Name = "ResourceType"
+          $objDnsbox.Columns[0].ReadOnly = $True
+          $objDnsbox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
 
-      $objDnsbox.Columns[1].Name = "SoureResourceGroup"
-      $objDnsbox.Columns[1].ReadOnly = $True
-      $objDnsbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
+          $objDnsbox.Columns[1].Name = "SoureResourceGroup"
+          $objDnsbox.Columns[1].ReadOnly = $True
+          $objDnsbox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
 
-      $objDnsbox.Columns[2].Name = "SourceName"
-      $objDnsbox.Columns[2].ReadOnly = $True
-      $objDnsbox.Columns[2].DefaultCellStyle.BackColor = "Gainsboro"
+          $objDnsbox.Columns[2].Name = "SourceName"
+          $objDnsbox.Columns[2].ReadOnly = $True
+          $objDnsbox.Columns[2].DefaultCellStyle.BackColor = "Gainsboro"
     
-      $objDnsbox.Columns[3].Name = "SourceDNSName"
-      $objDnsbox.Columns[3].ReadOnly = $True
-      $objDnsbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
+          $objDnsbox.Columns[3].Name = "SourceDNSName"
+          $objDnsbox.Columns[3].ReadOnly = $True
+          $objDnsbox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
     
-      $objDnsbox.Columns[4].Name = "DestinationDNSName"
-      $objDnsbox.Columns[4].DefaultCellStyle.BackColor = "White"
+          $objDnsbox.Columns[4].Name = "DestinationDNSName"
+          $objDnsbox.Columns[4].DefaultCellStyle.BackColor = "White"
     
-      $vmResources | Where-Object {$_.ResourceType -eq "publicIPAddresses"} | ForEach { $objDnsbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceName, $_.DNSName, $_.DNSName )  } | Out-Null
+          $vmResources | Where-Object {$_.ResourceType -eq "publicIPAddresses"} | ForEach { $objDnsbox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceName, $_.DNSName, $_.DNSName )  } | Out-Null
     
-      $objForm.Controls.Add($objDnsbox)
+          $objForm.Controls.Add($objDnsbox) | Out-Null
 
-      $objForm.Add_Shown({$objForm.Activate()})
-
-      [void] $objForm.ShowDialog()
-
-      if ( $objForm.DialogResult -eq "OK" ) {
-
-        $renameInfos = @()
-        for ( $i = 0; $i -lt $objListbox.RowCount; $i ++ )
-        {
-          $renameInfo = New-Object ResourceProfile
-          $renameInfo.ResourceType = $objListbox.Rows[$i].Cells[0].Value
-          $renameInfo.SourceResourceGroup = $objListbox.Rows[$i].Cells[1].Value
-          $renameInfo.DestinationResourceGroup = $objListbox.Rows[$i].Cells[2].Value
-          $renameInfo.SourceName = $objListbox.Rows[$i].Cells[3].Value
-          $renameInfo.DestinationName = $objListbox.Rows[$i].Cells[4].Value
+          $objLabel4 = New-Object System.Windows.Forms.Label
+          $objLabel4.Location = New-Object System.Drawing.Size(10,395) 
+          $objLabel4.AutoSize = $True
+          $objLabel4.BackColor = "Transparent"
+          $objLabel4.ForeColor = "LightSteelBlue"
+          $objLabel4.Font = $objFont2
+          $objLabel4.Text = "VM Size"
+          $objForm.Controls.Add($objLabel4) | Out-Null
+        
+          $objSizebox = New-Object System.Windows.Forms.DataGridView -Property @{
+            ColumnHeadersVisible = $true
+            RowHeadersVisible = $false
+            location = New-Object System.Drawing.Size(10,415)
+            Size = New-Object System.Drawing.Size(750,45)
+            AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+            EditMode = [System.Windows.Forms.DataGridViewEditMode]::EditOnEnter
+            Height = 320
+            Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Regular)
+            AllowUserToAddRows = $false
+          }
     
-          $renameInfos += $renameInfo
-        }
+          $objSizebox.ColumnCount = 4
+
+          $objSizebox.EnableHeadersVisualStyles = $false
+          $objSizebox.ColumnHeadersDefaultCellStyle.Font = New-Object System.Drawing.Font("Arial",8,[System.Drawing.FontStyle]::Bold)
+          $objSizebox.ColumnHeadersDefaultCellStyle.ForeColor = "MidnightBlue"
+  
+          $objSizebox.Columns[0].Name = "ResourceType"
+          $objSizebox.Columns[0].ReadOnly = $True
+          $objSizebox.Columns[0].DefaultCellStyle.BackColor = "Gainsboro"
+
+          $objSizebox.Columns[1].Name = "SoureResourceGroup"
+          $objSizebox.Columns[1].ReadOnly = $True
+          $objSizebox.Columns[1].DefaultCellStyle.BackColor = "Gainsboro"
+
+          $objSizebox.Columns[2].Name = "SourceVmName"
+          $objSizebox.Columns[2].ReadOnly = $True
+          $objSizebox.Columns[2].DefaultCellStyle.BackColor = "Gainsboro"
+    
+          $objSizebox.Columns[3].Name = "SourceVmSize"
+          $objSizebox.Columns[3].ReadOnly = $True
+          $objSizebox.Columns[3].DefaultCellStyle.BackColor = "Gainsboro"
+    
+
+          $vmSizeColumn = New-Object System.Windows.Forms.DataGridViewComboBoxColumn
+          $objSizebox.Columns.Add($vmSizeColumn) | Out-Null
+
+          foreach ( $vs in $vmSizeList  )
+          {
+            $vmSizeColumn.Items.Add($vs.name) | Out-Null
+          }
+    
+          $vmSizeColumn.Name = "DestinationVmSize"
+
+
+          $vmResources | Where-Object {$_.ResourceType -eq "virtualMachines"} | ForEach { $objSizebox.rows.Add( $_.ResourceType , $_.SourceResourceGroup, $_.SourceName, $vmSize)  } | Out-Null
+    
+          $objForm.Controls.Add($objSizebox) | Out-Null
+
+          $objForm.Add_Shown({$objForm.Activate()})
+
+          [void] $objForm.ShowDialog()
+
+          if ( $objForm.DialogResult -eq "OK" ) {
+
+            $renameInfos = @()
+            for ( $i = 0; $i -lt $objListbox.RowCount; $i ++ )
+            {
+              $renameInfo = New-Object ResourceProfile
+              $renameInfo.ResourceType = $objListbox.Rows[$i].Cells[0].Value
+              $renameInfo.SourceResourceGroup = $objListbox.Rows[$i].Cells[1].Value
+              $renameInfo.DestinationResourceGroup = $objListbox.Rows[$i].Cells[2].Value
+              $renameInfo.SourceName = $objListbox.Rows[$i].Cells[3].Value
+              $renameInfo.DestinationName = $objListbox.Rows[$i].Cells[4].Value
+    
+              $renameInfos += $renameInfo
+            }
       
-        for ( $j = 0; $j -lt $objDnsbox.RowCount; $j ++ )
-        {
-          $DnsResource = $renameInfos | Where-Object { ($_.ResourceType -eq "publicIPAddresses") -and ( $_.SourceResourceGroup -eq  $objDnsbox.Rows[$j].Cells[1].Value) -and ($_.SourceName -eq  $objDnsbox.Rows[$j].Cells[2].Value) }
-          $DnsResource.DnsName = $objDnsbox.Rows[$j].Cells[4].Value
+            for ( $j = 0; $j -lt $objDnsbox.RowCount; $j ++ )
+            {
+              $DnsResource = $renameInfos | Where-Object { ($_.ResourceType -eq "publicIPAddresses") -and ( $_.SourceResourceGroup -eq  $objDnsbox.Rows[$j].Cells[1].Value) -and ($_.SourceName -eq  $objDnsbox.Rows[$j].Cells[2].Value) }
+              $DnsResource.DnsName = $objDnsbox.Rows[$j].Cells[4].Value
+            }
+            for ( $j = 0; $j -lt $objSizebox.RowCount; $j ++ )
+            {
+              $VmResource = $renameInfos | Where-Object { ($_.ResourceType -eq "virtualMachines") -and ( $_.SourceResourceGroup -eq  $objSizebox.Rows[$j].Cells[1].Value) -and ($_.SourceName -eq  $objSizebox.Rows[$j].Cells[2].Value) }
+              $VmResource.VmSize = $objSizebox.Rows[$j].Cells[4].Value
+            }
+            $objForm.Dispose()
+            return $renameInfos
+          }
+          else
+          {
+            $objForm.Dispose()
+
+            break
+          }
+
+    
         }
+        Rename -vmResources $Param1 -vmSize $Param2 -vmSizeList $Param3
 
-        $objForm.Dispose()
-      }
-      else
-      {
-        $objForm.Dispose()
-        Break
-      }
-
-      return $renameInfos
-    }
+    }).AddArgument($args[0]).AddArgument($args[1]).AddArgument($args[2])
+    return $PowerShell.Invoke()
   }
-  $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
+
+  Set-AzureRmContext -Context $DestContext | Out-Null
+  $vmSizeList = Get-AzureRmVMSize -Location $targetLocation | Select-Object -Property Name
+  Set-AzureRmContext -Context $SrcContext | Out-Null
+
+  $job = Start-Job -ScriptBlock $RenameExcute -ArgumentList $Script:vmResources, $vm.HardwareProfile.VmSize, $vmSizeList
   $result = $job | Receive-Job -Wait -AutoRemoveJob
+
   $resultValidate = $false
 
   While (!$resultValidate)
@@ -2279,7 +2418,7 @@ Function Set-AzureRmVMMigrationRename
 
     foreach ( $r in $result )
     {
-      if ($r.ResourceType -ne "storageAccounts")
+      if (($r.ResourceType -ne "storageAccounts") -and (!([string]::IsNullOrEmpty($r.ResourceType))))
       {
         $resultCheck = $result | Where-Object { ($_.ResourceType -eq $r.ResourceType ) -and ( $_.DestinationResourceGroup -eq $r.DestinationResourceGroup ) -and ( $_.DestinationName -eq $r.DestinationName ) }
         if ( $resultCheck.Count -gt 1 )
@@ -2291,7 +2430,7 @@ Function Set-AzureRmVMMigrationRename
     }
     if (!$resultValidate)
     {
-      $job = Start-Job -InitializationScript $RenameFunction -ScriptBlock {Rename -vmResources $args} -ArgumentList $Script:vmResources
+      $job = Start-Job -ScriptBlock $RenameExcute -ArgumentList $Script:vmResources, $vm.HardwareProfile.VmSize, $vmSizeList
       $result = $job | Receive-Job -Wait -AutoRemoveJob
     }
   }
@@ -2305,11 +2444,11 @@ Function Set-AzureRmVMMigrationRename
     $renameInfo.SourceName = $_.SourceName
     $renameInfo.DestinationName = $_.DestinationName
     $renameInfo.DnsName = $_.DnsName
-    
+    $renameInfo.VmSize = $_.VmSize
     $renameInfos += $renameInfo
     }
+  
   return $renameInfos
-
 }
 
 function Start-AzureRmVMMigration
@@ -2543,6 +2682,7 @@ function Start-AzureRmVMMigration
         "Azure in China (operated by 21 vianet)" { $SrcEnvironment = [AzureEnvironment] "AzureChinaCloud" }
         "Microsoft Azure in Germany" { $SrcEnvironment = [AzureEnvironment] "AzureGermanCloud" }
         "Microsoft Azure" { $SrcEnvironment = [AzureEnvironment] "AzureCloud" }
+        default { Throw "User did not select any environment or cancel."}
       }
 
       [Windows.Forms.MessageBox]::Show("Please Enter " + $SrcEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
@@ -2575,6 +2715,7 @@ function Start-AzureRmVMMigration
           "Azure in China (operated by 21 vianet)" { $destEnvironment = [AzureEnvironment] "AzureChinaCloud" }
           "Microsoft Azure in Germany" { $destEnvironment = [AzureEnvironment] "AzureGermanCloud" }
           "Microsoft Azure" { $destEnvironment = [AzureEnvironment] "AzureCloud" }
+          default { Throw "User did not select any environment or cancel."}
         }
       }
       else
@@ -2656,7 +2797,12 @@ function Start-AzureRmVMMigration
     
     if ($RenameInfos -eq $null)
     {
-      $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext
+      
+      $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
+      if ($RenameConfirm -eq "Yes")
+      {
+        $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+      }
     }
     MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Succeed
   }
@@ -2666,9 +2812,6 @@ function Start-AzureRmVMMigration
     MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Failed -completed
     Throw "Input Parameters are not set correctly. Please try again."
   }
-
-
-
 
   Switch($JobType)
   {
@@ -2683,6 +2826,7 @@ function Start-AzureRmVMMigration
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
         MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
+                
         Throw "Validation Failed. Please check the error message and try again."
       }
       MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Succeed
@@ -2750,7 +2894,7 @@ function Start-AzureRmVMMigration
     {
       Try
       {
-        $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext
+        $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
       }
       Catch
       {
@@ -2770,7 +2914,7 @@ function Start-AzureRmVMMigration
 
     Try
     {
-      $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos    
+      $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
     }
     Catch
     {
@@ -2779,16 +2923,42 @@ function Start-AzureRmVMMigration
       Throw "Validation Failed. Please check the error message and try again."
     }
     
-    if ($validationResult.Result -eq "Failed")
+    while ($validationResult.Result -eq "Failed")
     {
-      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
-      return $validationResult
+      
+      Write-Host "Validation Failed. Please check following error messages:" -ForegroundColor Red
+
+      foreach ($message in $validationResult.Messages)
+      {
+        Write-Host $message -ForegroundColor Red        
+      }
+
+      $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Validation Failed.Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
+      if ($RenameConfirm -eq "Yes")
+      {
+        $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+      }
+      else
+      {
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
+        Throw "Validation Failed. Please check the error message and try again."
+      }
+
+      Try
+      {
+        $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+      }
+      Catch
+      {
+        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
+        Throw "Validation Failed. Please check the error message and try again."
+      }
     }
-    else
-    {
-      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -phaseStatus Succeed
-    }
-  
+
+    MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -phaseStatus Succeed
+    
+
     Try
     {
       Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
@@ -2827,7 +2997,6 @@ function Start-AzureRmVMMigration
   
     return ("VM: " + $vm.Name +  " Migration Succeeded.")
   }
-  
 }
 
 Export-ModuleMember -Function Start-AzureRmVMMigration
