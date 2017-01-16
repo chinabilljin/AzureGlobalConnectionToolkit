@@ -332,6 +332,7 @@ Function MigrationTelemetry {
         "Azure in China (operated by 21 vianet)" { $SrcEnvironment = [AzureEnvironment] "AzureChinaCloud" }
         "Microsoft Azure in Germany" { $SrcEnvironment = [AzureEnvironment] "AzureGermanCloud" }
         "Microsoft Azure" { $SrcEnvironment = [AzureEnvironment] "AzureCloud" }
+        default { Throw "User did not select any environment or cancel."}
       }
 
       [Windows.Forms.MessageBox]::Show("Please Enter " + $SrcEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
@@ -362,8 +363,9 @@ Function MigrationTelemetry {
         Switch ( $destEnv )
         {
           "Azure in China (operated by 21 vianet)" { $destEnvironment = [AzureEnvironment] "AzureChinaCloud" }
-          "Germany Azure" { $destEnvironment = [AzureEnvironment] "AzureGermanCloud" }
+          "Microsoft Azure in Germany" { $destEnvironment = [AzureEnvironment] "AzureGermanCloud" }
           "Microsoft Azure" { $destEnvironment = [AzureEnvironment] "AzureCloud" }
+          default { Throw "User did not select any environment or cancel."}
         }
       }
       else
@@ -445,7 +447,12 @@ Function MigrationTelemetry {
     
     if ($RenameInfos -eq $null)
     {
-      $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext
+      
+      $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
+      if ($RenameConfirm -eq "Yes")
+      {
+        $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+      }
     }
     MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Succeed
   }
@@ -472,6 +479,7 @@ Function MigrationTelemetry {
       {
         Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
         MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
+                
         Throw "Validation Failed. Please check the error message and try again."
       }
       MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Succeed
@@ -539,7 +547,7 @@ Function MigrationTelemetry {
     {
       Try
       {
-        $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext
+        $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
       }
       Catch
       {
@@ -568,15 +576,41 @@ Function MigrationTelemetry {
       Throw "Validation Failed. Please check the error message and try again."
     }
     
-    if ($validationResult.Result -eq "Failed")
+    while ($validationResult.Result -eq "Failed")
     {
-      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
-      return $validationResult
+      
+      Write-Host "Validation Failed. Please check following error messages:" -ForegroundColor Red
+
+      foreach ($message in $validationResult.Messages)
+      {
+        Write-Host $message -ForegroundColor Red        
+      }
+
+      $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Validation Failed.Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
+      if ($RenameConfirm -eq "Yes")
+      {
+        $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+      }
+      else
+      {
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
+        Throw "Validation Failed. Please check the error message and try again."
+      }
+
+      Try
+      {
+        $validationResult = .\Validate.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+      }
+      Catch
+      {
+        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
+        Throw "Validation Failed. Please check the error message and try again."
+      }
     }
-    else
-    {
-      MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -phaseStatus Succeed
-    }
+
+    MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -phaseStatus Succeed
+    
 
     Try
     {

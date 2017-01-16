@@ -65,6 +65,7 @@ customized or integrated into your existing DevOps process.
 * Support migration between different Azure Cloud Environments e.g. Azure Global to Azure China and Azure Germany.
 * Perform pre-migration validation.
 * Support rename for resource and DNS.
+* Support resize
 * PowerShell scripts based and customizable.
 * Support metadata and configuration migration (no extension support).
 

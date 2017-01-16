@@ -1,6 +1,6 @@
 @{
 NestedModules = @('.\Microsoft.Azure.CAT.Migration.PowerShell.dll')
-ModuleVersion = '0.2.0'
+ModuleVersion = '0.2.2'
 GUID = 'c668326f-e44f-446d-a4e3-00ee4633963d'
 Author = 'Microsoft Corporation'
 CompanyName = 'Microsoft Corporation'
