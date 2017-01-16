@@ -35,7 +35,7 @@ ARM VM Migration has two mode:
 
 #### Module Mode
 
-1. Download the [msi installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.2.1/AzureGlobalConnectionToolkit.0.2.1.msi)
+1. Download the [msi installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.2.2/AzureGlobalConnectionToolkit.0.2.2.msi)
 2. Install
 
 #### Script Mode
