@@ -14,6 +14,7 @@ CICD Tool is designed to solve this problem when customer want their services ca
 * Support data sync through VHD copy.
 * Support validation only mode.
 * Support rename for resource and DNS.
+* Support resize
 
 VM migration will be complete through four phases.
 
