@@ -2481,7 +2481,9 @@ function Start-AzureRmVMMigration
     [String] $osDiskUri,
 
     [Parameter(Mandatory=$false)]
-    [String[]] $dataDiskUris
+    [String[]] $dataDiskUris,
+
+    [switch] $force
   )
 
   ##Parameter Type Check
@@ -2795,7 +2797,7 @@ function Start-AzureRmVMMigration
       $targetLocation = $locationCheck.Location
     }
     
-    if ($RenameInfos -eq $null)
+    if (($RenameInfos -eq $null) -and !$force)
     {
       
       $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
@@ -2906,9 +2908,11 @@ function Start-AzureRmVMMigration
   }
 
   ##Confirm and Deploy
+  if (!$force){
   $migrationConfirmation = [System.Windows.Forms.MessageBox]::Show("Migrate virtual machine: " + $vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")?" , "Azure Global Connection Center" , 4)
+  }
 
-  if ($migrationConfirmation -eq "Yes")
+  if ($force -or ($migrationConfirmation -eq "Yes"))
   {
     Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Started" -percentComplete 0
 
@@ -2933,26 +2937,31 @@ function Start-AzureRmVMMigration
         Write-Host $message -ForegroundColor Red        
       }
 
-      $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Validation Failed.Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
-      if ($RenameConfirm -eq "Yes")
-      {
-        $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
-      }
-      else
-      {
+      if (!$force){
+        $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Validation Failed.Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
+        if ($RenameConfirm -eq "Yes")
+        {
+          $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+        }
+        else
+        {
         MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
         Throw "Validation Failed. Please check the error message and try again."
-      }
+        }
 
-      Try
-      {
-        $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+        Try
+        {
+          $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+        }
+        Catch
+        {
+          Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+          MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
+          Throw "Validation Failed. Please check the error message and try again."
+        }
       }
-      Catch
-      {
-        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
-        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
-        Throw "Validation Failed. Please check the error message and try again."
+      else {
+        Throw "Please check configuration and try again."
       }
     }
 

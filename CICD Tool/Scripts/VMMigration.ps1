@@ -26,7 +26,9 @@
     [String] $osDiskUri,
 
     [Parameter(Mandatory=$false)]
-    [String[]] $dataDiskUris
+    [String[]] $dataDiskUris,
+
+    [switch] $force
   )
 
   ##Parameter Type Check
@@ -65,33 +67,6 @@
     }
   }
 
-  Function Check-AzureRmMigrationPSRequirement
-  {
-    $moduleList = Get-Module -ListAvailable
-
-    $AzureRmStorage = $moduleList | Where-Object { $_.Name -eq "AzureRm.Storage" }
-    $AzureRmCompute = $moduleList | Where-Object { $_.Name -eq "AzureRm.Compute" }
-    $AzureRMNetwork = $moduleList | Where-Object { $_.Name -eq "AzureRm.Network" }
-    $AzureRMProfile = $moduleList | Where-Object { $_.Name -eq "AzureRm.Profile" }
-
-    function Check-AzurePSModule
-    {
-      Param( [PSObject] $module )
-
-      if ( $module -eq $null )
-      { Throw "AzureRm PowerShell Module does not successfully install on PowerShell Environment. Please Install before execute this script." }
-
-      if ( !(($module.Version.Major -ge 2) -or (($module.Version.Major -eq 1) -and ( $module.Version.Minor -ge 7 ))) )
-      { Throw "This script requires AzureRm PowerShell version higher than 1.7.0. Please install the latest Azure Powershell before execute this script." }
-    
-    }
-
-    Check-AzurePSModule -module $AzureRmStorage
-    Check-AzurePSModule -module $AzureRmCompute
-    Check-AzurePSModule -module $AzureRMNetwork
-    Check-AzurePSModule -module $AzureRMProfile
-  }
-
   ##PS Module Check
   Check-AzureRmMigrationPSRequirement
 
@@ -106,116 +81,116 @@
 
   ##Form for GUI input
   $showFormCode = {
-  Function Show-Form
-  {
-    Param(
-      [Parameter(Mandatory=$True)]
-      [String] $title,
+    Function Show-Form
+    {
+      Param(
+        [Parameter(Mandatory=$True)]
+        [String] $title,
 
-      [Parameter(Mandatory=$True)]
-      [String[]] $options,
+        [Parameter(Mandatory=$True)]
+        [String[]] $options,
 
-      [Switch]
-      $MultipleChoice
-    )
-    Add-Type -AssemblyName System.Windows.Forms
-    Add-Type -AssemblyName System.Drawing
+        [Switch]
+        $MultipleChoice
+      )
+      Add-Type -AssemblyName System.Windows.Forms
+      Add-Type -AssemblyName System.Drawing
 
-    $objForm = New-Object System.Windows.Forms.Form 
-    $objForm.Text = "Azure Global Connection Center"
-    $objForm.Size = New-Object System.Drawing.Size(700,500) 
-    $objForm.StartPosition = "CenterScreen"
+      $objForm = New-Object System.Windows.Forms.Form 
+      $objForm.Text = "Azure Global Connection Center"
+      $objForm.Size = New-Object System.Drawing.Size(700,500) 
+      $objForm.StartPosition = "CenterScreen"
 
-    $objForm.KeyPreview = $True
+      $objForm.KeyPreview = $True
 
-    $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
-        {
+      $objForm.Add_KeyDown({if ($_.KeyCode -eq "Enter") 
+          {
+            $objForm.DialogResult = "OK"
+            $objForm.Close()
+          }
+      })
+
+      $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
+      {$objForm.Close()}})
+
+      $objForm.BackColor = "#1F4E79"
+
+      $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
+      $OKButton = New-Object System.Windows.Forms.Button
+      $OKButton.Location = New-Object System.Drawing.Size(10,400)
+      $OKButton.Size = New-Object System.Drawing.Size(180,40)
+      $OKButton.Text = "OK"
+      $OKButton.Font = $Buttonfont
+      $OKButton.BackColor = "Gainsboro"
+
+      $OKButton.Add_Click(
+        {    
           $objForm.DialogResult = "OK"
           $objForm.Close()
-        }
-    })
+      })
 
-    $objForm.Add_KeyDown({if ($_.KeyCode -eq "Escape") 
-    {$objForm.Close()}})
+      $objForm.Controls.Add($OKButton)
 
-    $objForm.BackColor = "#1F4E79"
+      $CancelButton = New-Object System.Windows.Forms.Button
+      $CancelButton.Location = New-Object System.Drawing.Size(200,400)
+      $CancelButton.Size = New-Object System.Drawing.Size(180,40)
+      $CancelButton.Text = "Cancel"
+      $CancelButton.Font = $Buttonfont
+      $CancelButton.BackColor = "Gainsboro"
 
-    $Buttonfont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Bold)
-    $OKButton = New-Object System.Windows.Forms.Button
-    $OKButton.Location = New-Object System.Drawing.Size(10,400)
-    $OKButton.Size = New-Object System.Drawing.Size(180,40)
-    $OKButton.Text = "OK"
-    $OKButton.Font = $Buttonfont
-    $OKButton.BackColor = "Gainsboro"
+      $CancelButton.Add_Click({$objForm.Close()})
+      $objForm.Controls.Add($CancelButton)
 
-    $OKButton.Add_Click(
-      {    
-        $objForm.DialogResult = "OK"
-        $objForm.Close()
-    })
+      $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
+      $objLabel = New-Object System.Windows.Forms.Label
+      $objLabel.Location = New-Object System.Drawing.Size(10,20) 
+      $objLabel.AutoSize = $True
+      $objLabel.BackColor = "Transparent"
+      $objLabel.ForeColor = "White"
+      $objLabel.Font = $objFont
+      $objLabel.Text = $title
+      $objForm.Controls.Add($objLabel) 
 
-    $objForm.Controls.Add($OKButton)
+      $objListbox = New-Object System.Windows.Forms.Listbox 
+      $objListbox.Location = New-Object System.Drawing.Size(10,70) 
+      $objListbox.Size = New-Object System.Drawing.Size(650,30) 
 
-    $CancelButton = New-Object System.Windows.Forms.Button
-    $CancelButton.Location = New-Object System.Drawing.Size(200,400)
-    $CancelButton.Size = New-Object System.Drawing.Size(180,40)
-    $CancelButton.Text = "Cancel"
-    $CancelButton.Font = $Buttonfont
-    $CancelButton.BackColor = "Gainsboro"
-
-    $CancelButton.Add_Click({$objForm.Close()})
-    $objForm.Controls.Add($CancelButton)
-
-    $objFont = New-Object System.Drawing.Font("Arial",16,[System.Drawing.FontStyle]::Italic)
-    $objLabel = New-Object System.Windows.Forms.Label
-    $objLabel.Location = New-Object System.Drawing.Size(10,20) 
-    $objLabel.AutoSize = $True
-    $objLabel.BackColor = "Transparent"
-    $objLabel.ForeColor = "White"
-    $objLabel.Font = $objFont
-    $objLabel.Text = $title
-    $objForm.Controls.Add($objLabel) 
-
-    $objListbox = New-Object System.Windows.Forms.Listbox 
-    $objListbox.Location = New-Object System.Drawing.Size(10,70) 
-    $objListbox.Size = New-Object System.Drawing.Size(650,30) 
-
-    if($MultipleChoice)
-    {
-      $objListbox.SelectionMode = "MultiExtended"
-    }
-
-    foreach ( $option in $options ) {
-      [void] $objListbox.Items.Add($option)
-    }
-
-    $objlistfont = New-Object System.Drawing.Font("Arial",14,[System.Drawing.FontStyle]::Regular)
-    $objListbox.Font = $objlistfont
-    $objListbox.Height = 320
-    $objForm.Controls.Add($objListbox) 
-
-
-    $objForm.Add_Shown({$objForm.Activate()})
-    [void] $objForm.ShowDialog()
-    if ( $objForm.DialogResult -eq "OK" ) {
-
-      $responses = @()
-      foreach ( $selection in $objListbox.SelectedItems ) {
-        $responses+= $selection
+      if($MultipleChoice)
+      {
+        $objListbox.SelectionMode = "MultiExtended"
       }
 
-      $objForm.Dispose()
+      foreach ( $option in $options ) {
+        [void] $objListbox.Items.Add($option)
+      }
 
+      $objlistfont = New-Object System.Drawing.Font("Arial",14,[System.Drawing.FontStyle]::Regular)
+      $objListbox.Font = $objlistfont
+      $objListbox.Height = 320
+      $objForm.Controls.Add($objListbox) 
+
+
+      $objForm.Add_Shown({$objForm.Activate()})
+      [void] $objForm.ShowDialog()
+      if ( $objForm.DialogResult -eq "OK" ) {
+
+        $responses = @()
+        foreach ( $selection in $objListbox.SelectedItems ) {
+          $responses+= $selection
+        }
+
+        $objForm.Dispose()
+
+      }
+
+      if ($responses.Count -eq 0)
+      {
+        $objForm.Dispose()
+        Break
+      }
+
+      return $responses
     }
-
-    if ($responses.Count -eq 0)
-    {
-      $objForm.Dispose()
-      Break
-    }
-
-    return $responses
-  }
   }
 
   Function SelectionBox
@@ -240,87 +215,9 @@
     return $result
   }
 
-$Global:JobId = New-Guid | %{ $_.Guid }
-$Global:timeSpanList = @()
-Function MigrationTelemetry {
-    Param(
-          [Parameter(Mandatory=$true)]
-          [PSObject] $srcContext,
+  $Script:JobId = New-Guid | %{ $_.Guid }
+  $Script:timeSpanList = @()
 
-          [Parameter(Mandatory=$false)]
-          [PSObject] $destContext,
-
-          [Parameter(Mandatory=$false)]
-          [PSObject] $vmProfile,
-
-          [Parameter(Mandatory=$false)]
-          [ValidateSet("UserInput", "PreValidation","Preparation", "VhdCopy", "VMBuild", "PostValidate")]
-          [String] $phaseName = "",
-
-          [Parameter(Mandatory=$false)]
-          [ValidateSet("Succeed", "Failed", "Started")]
-          [String] $phaseStatus = "Started",
-
-          [Switch] $completed
-
-        )
-    $path = Get-Location | %{$_.Path}
-
-    #record timespan for each phase
-    $dateTime = Get-Date
-    
-    $duration = If ($timeSpanList.Count -eq 0) {
-        0
-    } else {
-        for($i=$timeSpanList.Count-1;$i -ge 0;$i-- ) {
-            if($timeSpanList[$i].PhaseName -ne $phaseName) {
-                $lastPhaseDateTime = $timeSpanList[$i].DateTime
-                break
-            }
-        }
-        ($dateTime - $lastPhaseDateTime).TotalSeconds.ToString("F1")
-    }
-
-    $timeSpan = New-Object -TypeName PSObject 
-    $timeSpan | Add-Member -MemberType NoteProperty -Name PhaseName -Value $phaseName 
-    $timeSpan | Add-Member -MemberType NoteProperty -Name PhaseStatus -Value $phaseStatus
-    $timeSpan | Add-Member -MemberType NoteProperty -Name DateTime -Value $dateTime 
-    $timeSpan | Add-Member -MemberType NoteProperty -Name TimeSpan -Value $duration 
-
-    $Global:timeSpanList += $timeSpan
-
-    #just record the start time when phase name was not provided, so no table upgrade
-    if($phaseName -eq "") {return}
-
-    $dic = @{}
-    $dic.Add("Completed",$completed.IsPresent)
-    $dic.Add("SrcContext",(ConvertTo-Json $srcContext))
-    $dic.Add("DestContext",(ConvertTo-Json $destContext))
-    $dic.Add("VmProfile",(ConvertTo-Json $vmProfile))
-    $dic.Add("SourceEnvironment",$srcContext.Environment.Name)
-    $dic.Add("SourceSubscriptionId",$srcContext.Subscription.SubscriptionId)
-    $dic.Add("SourceTenantId",$srcContext.Tenant.TenantId)
-    $dic.Add("DestinationEnvironment",$destContext.Environment.Name)
-    $dic.Add("DestinationSubscriptionId",$destContext.Subscription.SubscriptionId)
-    $dic.Add("DestinationTenantId",$destContext.Tenant.TenantId)
-    $dic.Add("VmSize",$vmProfile.HardwareProfile.VmSize)
-    $dic.Add("VmLocation",$vmProfile.Location)
-    $dic.Add("VmOsType",$vmProfile.StorageProfile.OsDisk.OsType)
-    $dic.Add("VmNumberOfDataDisk",$vmProfile.StorageProfile.DataDisks.Count)
-    $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $true} | %{$dic.Add("VmOsDiskSzie",$_.BlobActualBytes)}
-    $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $false} | %{$dic.Add(("VmDataDisk"+$_.Lun+"Size"),$_.BlobActualBytes)}
-    $Global:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | %{
-      $dic.Add(($_.phaseName+"TimeSpan"),$_.TimeSpan);
-      $dic.Add(($_.phaseName+"Status"),$_.PhaseStatus);
-    }
-
-    Start-Job -ScriptBlock {
-        Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
-        $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
-        $telemetry.AddOrUpdateEntity($args[1],$args[2],$args[3])
-    } -ArgumentList $path, $srcContext.Account, $Global:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
-
-}
   ##Get the parameter if not provided
   Try
   {
@@ -445,13 +342,13 @@ Function MigrationTelemetry {
       $targetLocation = $locationCheck.Location
     }
     
-    if ($RenameInfos -eq $null)
+    if (($RenameInfos -eq $null) -and !$force)
     {
       
       $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
       if ($RenameConfirm -eq "Yes")
       {
-        $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+        $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
       }
     }
     MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Succeed
@@ -463,9 +360,6 @@ Function MigrationTelemetry {
     Throw "Input Parameters are not set correctly. Please try again."
   }
 
-
-
-
   Switch($JobType)
   {
     ##Validation Only
@@ -473,7 +367,7 @@ Function MigrationTelemetry {
     {
       Try
       {
-        $validationResult = .\Validate.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+        $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
       }
       Catch
       {
@@ -491,7 +385,7 @@ Function MigrationTelemetry {
     {
       Try
       {
-        .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+        Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
       }
       Catch
       {
@@ -508,7 +402,7 @@ Function MigrationTelemetry {
     {
       Try
       { 
-        $diskUris,$vm = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+        $diskUris,$vm = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
       }
       Catch
       {
@@ -530,7 +424,7 @@ Function MigrationTelemetry {
     
       Try
       {
-        .\VMBuild.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris -RenameInfos $RenameInfos
+        Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris -RenameInfos $RenameInfos
       }
       Catch
       {
@@ -547,7 +441,7 @@ Function MigrationTelemetry {
     {
       Try
       {
-        $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+        $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
       }
       Catch
       {
@@ -559,15 +453,17 @@ Function MigrationTelemetry {
   }
 
   ##Confirm and Deploy
+  if (!$force){
   $migrationConfirmation = [System.Windows.Forms.MessageBox]::Show("Migrate virtual machine: " + $vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")?" , "Azure Global Connection Center" , 4)
+  }
 
-  if ($migrationConfirmation -eq "Yes")
+  if ($force -or ($migrationConfirmation -eq "Yes"))
   {
     Write-Progress -id 0 -activity ($vm.Name + "(ResourceGroup:" + $vm.ResourceGroupName + ")" ) -status "Migration Started" -percentComplete 0
 
     Try
     {
-      $validationResult = .\Validate.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+      $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
     }
     Catch
     {
@@ -586,26 +482,31 @@ Function MigrationTelemetry {
         Write-Host $message -ForegroundColor Red        
       }
 
-      $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Validation Failed.Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
-      if ($RenameConfirm -eq "Yes")
-      {
-        $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
-      }
-      else
-      {
+      if (!$force){
+        $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Validation Failed.Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
+        if ($RenameConfirm -eq "Yes")
+        {
+          $RenameInfos = Set-AzureRmVMMigrationRename -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
+        }
+        else
+        {
         MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
         Throw "Validation Failed. Please check the error message and try again."
-      }
+        }
 
-      Try
-      {
-        $validationResult = .\Validate.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+        Try
+        {
+          $validationResult = Start-AzureRmVMMigrationValidate -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
+        }
+        Catch
+        {
+          Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
+          MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
+          Throw "Validation Failed. Please check the error message and try again."
+        }
       }
-      Catch
-      {
-        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
-        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "PreValidation" -completed -phaseStatus Failed
-        Throw "Validation Failed. Please check the error message and try again."
+      else {
+        Throw "Please check configuration and try again."
       }
     }
 
@@ -614,7 +515,7 @@ Function MigrationTelemetry {
 
     Try
     {
-      .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
       MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -phaseStatus Succeed
     }
     Catch
@@ -626,7 +527,7 @@ Function MigrationTelemetry {
     
     Try
     {
-      $diskUris,$vm = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      $diskUris,$vm = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
       MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -phaseStatus Succeed
     }
     Catch
@@ -638,7 +539,7 @@ Function MigrationTelemetry {
     
     Try
     {
-      .\VMBuild.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris -RenameInfos $RenameInfos
+      Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris -RenameInfos $RenameInfos
     }
     Catch
     {
