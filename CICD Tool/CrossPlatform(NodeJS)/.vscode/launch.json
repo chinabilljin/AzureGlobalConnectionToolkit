@@ -1,0 +1,36 @@
+{
+    // Use IntelliSense to learn about possible Node.js debug attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Program",
+            "program": "${workspaceRoot}\\src\\azmigrate.js",
+            "args": [
+                "vm",
+                "-E", "AzureChinaCloud",
+                "-d", "72f988bf-86f1-41af-91ab-2d7cd011db47",
+                "-i", "f06ac869-e0df-4159-93dc-3ae508717ca3",
+                "-c", "2wsx#EDC4rfv%TGB",
+                "-D", "99d86385-9b07-4221-9a3a-facb274186b5",
+                "-I", "a3bce003-6b9b-44b3-ac61-20770b4bcaa7",
+                "-C", "2wsx#EDC4rfv%TGB",
+                "-s", "b46ff9c8-1685-4e13-877c-9331eb93ebe6",
+                "-S", "5cd19e13-aabd-416e-9a34-234ee5b1a321",
+                "-g", "testcases01",
+                "-n", "ma01sqlSrv14",
+                "-L", "chinaeast"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to Process",
+            "port": 5858
+        }
+    ]
+}

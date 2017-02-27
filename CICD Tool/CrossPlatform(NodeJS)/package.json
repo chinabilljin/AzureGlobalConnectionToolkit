@@ -1,0 +1,44 @@
+{
+  "name": "azure-connectiontoolkit-cicd",
+  "version": "0.0.2",
+  "description": "Azure Global Connection Toolkit - CI/CD Tool",
+  "main": "src/azmigrate.js",
+  "preferGlobal": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Azure/AzureGlobalConnectionToolkit"
+  },
+  "keywords": [
+    "azure",
+    "node",
+    "migration",
+    "national",
+    "sovereign",
+    "cloud",
+    "cicd",
+    "connection"
+  ],
+  "bugs": {
+    "url": "https://github.com/Azure/AzureGlobalConnectionToolkit/issues"
+  },
+  "author": "Azure China CAT",
+  "license": "MIT",
+  "bin": {
+    "azmigrate": "./src/azmigrate.js"
+  },
+  "dependencies": {
+    "applicationinsights": "^0.18.0",
+    "azure-arm-compute": "^0.19.1",
+    "azure-arm-network": "^0.17.0",
+    "azure-arm-resource": "^1.6.1-preview",
+    "azure-arm-storage": "^0.14.0-preview",
+    "azure-storage": "^1.4.0",
+    "commander": "^2.9.0",
+    "ms-rest-azure": "^1.15.2",
+    "multi-progress": "^2.0.0",
+    "uuid": "^3.0.1"
+  }
+}
