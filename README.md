@@ -168,7 +168,7 @@ Start-AzureRmVMMigration -JobType Validate
 
 #### Cross Platform NodeJS Version
 
-Please visit [CICD Crossplatfrom](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool/CrossPlatForm(NodeJS)) for more details.
+Please visit [CICD Crossplatfrom](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool/CrossPlatform(NodeJS)) for more details.
 
 After executing the cmdlet, it will follow the steps to perform VM migration:
 
