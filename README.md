@@ -61,6 +61,8 @@ customized or integrated into your existing DevOps process.
 
 ### CICD Tool
 
+#### PowerShell Version
+
 * Support ARM VM migration only in current release(no classic VM support).
 * Support migration between different Azure Cloud Environments e.g. Azure Global to Azure China and Azure Germany.
 * Perform pre-migration validation.
@@ -69,6 +71,13 @@ customized or integrated into your existing DevOps process.
 * PowerShell scripts based and customizable.
 * Support metadata and configuration migration (no extension support).
 
+#### Cross Platform NodeJS version
+
+* Support ARM VM migration only in current release(no classic VM support).
+* Support migration between different Azure Cloud Environments e.g. Azure Global to Azure China and Azure Germany.
+* Perform pre-migration validation.
+* NodeJS based and customizable.
+* Support metadata and configuration migration (no extension support).
 
 ## Supported Environments
 
@@ -89,10 +98,18 @@ customized or integrated into your existing DevOps process.
   * Microsoft Azure in China
   * Microsoft Azure in Germany
 
+#### PowerShell Version
+
 * Client Environment
   * Windows PowerShell 3.0+
-  * Latest Azure PowerShell Recommended
-  * Internet Connectivity to source environment and destination environment.
+  * Latest Azure PowerShell recommended
+  * Internet connectivity to source environment and destination environment
+
+#### Cross Platfrom NodeJS Version
+
+* Client Environment
+  * Latest NodeJS
+  * Internet connectivity to source environment and destination environment
 
 ## Installation
 
@@ -102,6 +119,20 @@ customized or integrated into your existing DevOps process.
 2. Run and Install.
 
 You can also find all the previous releases in [Azure Global Connection Toolkit Release](https://github.com/Azure/AzureGlobalConnectionToolkit/releases)
+
+### CICD Cross Platform NodeJS Version
+
+To install CICD cross-platform CLI, run following command to install npm package.
+
+```bash
+npm install -g azure-connectiontoolkit-cicd
+```
+
+On Linux distributions, you might need to use sudo to successfully run the npm command, as follows:
+
+```bash
+sudo npm install -g azure-connectiontoolkit-cicd
+```
 
 ## Get Started
 
@@ -121,6 +152,8 @@ After executing the cmdlet, it will follow the steps to generate report:
 
 ### CICD Tool
 
+#### PowerShell Version
+
 After installation, run cmdlet in your PowerShell if you want to perform a migration.
 
 ```powershell
@@ -132,6 +165,10 @@ Run cmdlet if you only want to validate.
 ```powershell
 Start-AzureRmVMMigration -JobType Validate
 ```
+
+#### Cross Platform NodeJS Version
+
+Please visit [CICD Crossplatfrom](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool/CrossPlatForm(NodeJS)) for more details.
 
 After executing the cmdlet, it will follow the steps to perform VM migration:
 
