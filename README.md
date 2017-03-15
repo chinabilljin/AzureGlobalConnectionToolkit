@@ -89,7 +89,7 @@ customized or integrated into your existing DevOps process.
   
 * Client Environment
   * Windows PowerShell 3.0+
-  * Internet Connectivity to refernece environment and target environment.
+  * Internet Connectivity to reference environment and target environment.
   
 ### CICD Tool
 
