@@ -120,6 +120,7 @@ else
       $targetStor = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storName }
       
       $resource = New-Object ResourceProfile
+      $resource.SourceName = $targetStor.StorageAccountName
       $resource.DestinationName = $targetStor.StorageAccountName
       $resource.ResourceType = "storageAccounts"
       $resource.DestinationResourceGroup = $targetStor.ResourceGroupName
@@ -398,7 +399,7 @@ Foreach ($storage in $storageAccountNames)
 
   if ( $storageCheck -eq $null )
   {
-    Throw ("The storage account: " + $storage + " does not exit in source subscription. Please verify again")
+    Throw ("The storage account: " + $storage + " does not exist in source subscription. Please verify again")
   }
   elseif ( $storageCheck.sku.Tier -eq "Premium" )
   {
