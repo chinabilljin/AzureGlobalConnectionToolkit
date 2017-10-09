@@ -294,15 +294,15 @@ Function MigrationTelemetry {
 
     $dic = @{}
     $dic.Add("Completed",$completed.IsPresent)
-    $dic.Add("SrcContext",(ConvertTo-Json $srcContext))
-    $dic.Add("DestContext",(ConvertTo-Json $destContext))
+    #$dic.Add("SrcContext",(ConvertTo-Json $srcContext))
+    #$dic.Add("DestContext",(ConvertTo-Json $destContext))
     $dic.Add("VmProfile",(ConvertTo-Json $vmProfile))
     $dic.Add("SourceEnvironment",$srcContext.Environment.Name)
-    $dic.Add("SourceSubscriptionId",$srcContext.Subscription.SubscriptionId)
-    $dic.Add("SourceTenantId",$srcContext.Tenant.TenantId)
+    $dic.Add("SourceSubscriptionId",$srcContext.Subscription.Id)
+    $dic.Add("SourceTenantId",$srcContext.Tenant.Id)
     $dic.Add("DestinationEnvironment",$destContext.Environment.Name)
-    $dic.Add("DestinationSubscriptionId",$destContext.Subscription.SubscriptionId)
-    $dic.Add("DestinationTenantId",$destContext.Tenant.TenantId)
+    $dic.Add("DestinationSubscriptionId",$destContext.Subscription.Id)
+    $dic.Add("DestinationTenantId",$destContext.Tenant.Id)
     $dic.Add("VmSize",$vmProfile.HardwareProfile.VmSize)
     $dic.Add("VmLocation",$vmProfile.Location)
     $dic.Add("VmOsType",$vmProfile.StorageProfile.OsDisk.OsType)
@@ -318,7 +318,7 @@ Function MigrationTelemetry {
         Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
         $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
         $telemetry.AddOrUpdateEntity($args[1],$args[2],$args[3])
-    } -ArgumentList $path, $srcContext.Account, $Global:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
+    } -ArgumentList $path, $srcContext.Account.Id, $Global:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
 
 }
   ##Get the parameter if not provided
@@ -343,19 +343,19 @@ Function MigrationTelemetry {
 
       ForEach ( $sub in $subscriptions )
       {
-        $subList += $sub.SubscriptionName
+        $subList += $sub.Name
       }
 
       $subscription = SelectionBox -title "Please Select the Source Subscription" -options $subList
 
-      Select-AzureRmSubscription -SubscriptionName $Subscription | Out-Null
+      Select-AzureRmSubscription -Subscription $Subscription | Out-Null
 
       $SrcContext = Get-AzureRmContext
     }
 
-    MigrationTelemetry -srcContext $srcContext
+    MigrationTelemetry -srcContext $SrcContext
 
-    if ($destContext -eq $null )
+    if ($DestContext -eq $null )
     {
       if ([string]::IsNullOrEmpty($destEnvironment))
       {
@@ -381,14 +381,14 @@ Function MigrationTelemetry {
 
       ForEach ( $sub in $subscriptions )
       {
-        $subList += $sub.SubscriptionName
+        $subList += $sub.Name
       }
 
       $subscription = SelectionBox -title "Please Select the Desitnation Subscription" -options $subList
 
-      Select-AzureRmSubscription -SubscriptionName $Subscription | Out-Null
+      Select-AzureRmSubscription -Subscription $Subscription | Out-Null
 
-      $destContext = Get-AzureRmContext
+      $DestContext = Get-AzureRmContext
     }
 
     if ( $vm -eq $null )
@@ -491,7 +491,7 @@ Function MigrationTelemetry {
     {
       Try
       {
-        .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+        .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
       }
       Catch
       {
@@ -508,7 +508,7 @@ Function MigrationTelemetry {
     {
       Try
       { 
-        $diskUris,$vm = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+        $diskUris,$vm = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
       }
       Catch
       {
@@ -530,7 +530,7 @@ Function MigrationTelemetry {
     
       Try
       {
-        .\VMBuild.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris -RenameInfos $RenameInfos
+        .\VMBuild.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris -RenameInfos $RenameInfos
       }
       Catch
       {
@@ -614,7 +614,7 @@ Function MigrationTelemetry {
 
     Try
     {
-      .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      .\Preparation.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
       MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -phaseStatus Succeed
     }
     Catch
@@ -626,7 +626,7 @@ Function MigrationTelemetry {
     
     Try
     {
-      $diskUris,$vm = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+      $diskUris,$vm = .\CopyVhds.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
       MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -phaseStatus Succeed
     }
     Catch
@@ -638,7 +638,7 @@ Function MigrationTelemetry {
     
     Try
     {
-      .\VMBuild.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris -RenameInfos $RenameInfos
+      .\VMBuild.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris -RenameInfos $RenameInfos
     }
     Catch
     {

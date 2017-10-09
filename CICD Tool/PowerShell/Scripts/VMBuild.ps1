@@ -234,7 +234,7 @@ Foreach ( $rg in $sourceResourceGroups )
   $sourceTemplate = Get-Content -raw -Path $Sourcetemplatepath | ConvertFrom-Json
 
   $paraMembers = $sourceTemplate.parameters | Get-Member -MemberType NoteProperty
-  
+
   #Update the rename result in parameter
   foreach ( $pm in $paraMembers )
   {
@@ -389,8 +389,10 @@ ForEach ( $resource in $vmResources )
       default
       {
         $targetresource = $srcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match $resource.ResourceType) }
-        $targetresource.location = $targetLocation
-        $targetresource.dependsOn = @()
+
+        $targetresource | Add-Member -Name "location" -MemberType NoteProperty -Value $targetLocation -Force
+        $targetresource | Add-Member -Name "dependsOn" -MemberType NoteProperty -Value (@()) -Force
+        
         $destResourceList.$destRg.$phase += $targetresource
       }
     }  
@@ -622,7 +624,7 @@ For($k = 1; $k -le 5 ; $k++ )
       
       #Output the json template
       $targettemplatename = "Target" + $rg + $currentPhase + ".json"
-      
+
       $targetjson = $targettemplate | ConvertTo-Json -Depth 9
       $targettemplatepath = $Env:TEMP + "\AzureMigrationtool\$tempId" + "\" + $targettemplatename
       $targetjson -replace "\\u0027", "'" | Out-File $targettemplatepath

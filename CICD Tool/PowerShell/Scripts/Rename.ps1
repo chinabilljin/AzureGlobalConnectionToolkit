@@ -104,13 +104,13 @@ if ($vm.AvailabilitySetReference -ne $null)
    
 
 #NIC
-if ($vm.NetworkInterfaceIDs -ne $null)
+if ($vm.NetworkProfile.NetworkInterfaces -ne $null)
 { 
-   foreach ( $nicId in $vm.NetworkInterfaceIDs )
+   foreach ( $nicId in $vm.NetworkProfile.NetworkInterfaces )
    {
-      Add-ResourceList -resourceId $nicId
+      Add-ResourceList -resourceId $nicId.Id
             
-      $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId }
+      $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId.Id }
      
       foreach ( $ipConfig in $nic.IpConfigurations )
       {

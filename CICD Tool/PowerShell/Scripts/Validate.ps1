@@ -296,7 +296,8 @@ $Script:resultDetailsList = @()
 Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Permission" -percentComplete 10
 
 Set-AzureRmContext -Context $SrcContext | Out-Null
-$roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $SrcContext.Account
+$scope = "/subscriptions/" + $SrcContext.Subscription.Id 
+$roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $SrcContext.Account.Id) -and ($_.Scope -eq $scope) } 
 
 if(!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner")) 
 {
@@ -306,11 +307,12 @@ if(!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignmen
 
 #check dest permission
 Set-AzureRmContext -Context $DestContext | Out-Null
-$roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $DestContext.Account
+$scope = "/subscriptions/" + $DestContext.Subscription.Id 
+$roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $DestContext.Account.Id) -and ($_.Scope -eq $scope) } 
 
 if(!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner")) 
 {
-  Add-ResultList -result "Failed" -detail "The current user don't have source subscription permission, because the user is not owner or coAdmin."
+  Add-ResultList -result "Failed" -detail "The current user don't have destination subscription permission, because the user is not owner or coAdmin."
 }
 
 
@@ -380,10 +382,10 @@ foreach ( $resource in $vmResources)
 {
   if($resource.ResourceType -eq "storageAccounts")
   {
-     $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.DestinationName }
+     $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.SourceName }
      if ( $saCheck -eq $null )
      {
-        $storageAccountNames += $resource.DestinationName
+        $storageAccountNames += $resource.SourceName
      }
   }
 }
@@ -409,6 +411,19 @@ Foreach ($storage in $storageAccountNames)
     }
   }
 
+}
+
+$storageAccountNames = @()
+foreach ( $resource in $vmResources)
+{
+  if($resource.ResourceType -eq "storageAccounts")
+  {
+     $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.DestinationName }
+     if ( $saCheck -eq $null )
+     {
+        $storageAccountNames += $resource.DestinationName
+     }
+  }
 }
 
 Set-AzureRmContext -Context $DestContext | Out-Null
