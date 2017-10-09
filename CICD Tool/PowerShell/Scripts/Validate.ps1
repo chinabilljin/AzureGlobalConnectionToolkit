@@ -377,6 +377,9 @@ if($storageAccountsCount -gt $storageAvailable)
 
 # Storage Name Existence
 Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Name Availability" -percentComplete 50
+
+#VM Size check for premium storage
+Set-AzureRmContext -Context $SrcContext | Out-Null
 $storageAccountNames = @()
 foreach ( $resource in $vmResources)
 {
@@ -389,9 +392,6 @@ foreach ( $resource in $vmResources)
      }
   }
 }
-
-#VM Size check for premium storage
-Set-AzureRmContext -Context $SrcContext | Out-Null
 Foreach ($storage in $storageAccountNames)
 {
   $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage}
@@ -413,6 +413,8 @@ Foreach ($storage in $storageAccountNames)
 
 }
 
+
+Set-AzureRmContext -Context $DestContext | Out-Null
 $storageAccountNames = @()
 foreach ( $resource in $vmResources)
 {
@@ -426,7 +428,6 @@ foreach ( $resource in $vmResources)
   }
 }
 
-Set-AzureRmContext -Context $DestContext | Out-Null
 Foreach ($storage in $storageAccountNames)
 {
   $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage}
