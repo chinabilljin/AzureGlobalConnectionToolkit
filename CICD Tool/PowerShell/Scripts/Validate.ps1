@@ -298,7 +298,14 @@ Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Permi
 
 Set-AzureRmContext -Context $SrcContext | Out-Null
 $scope = "/subscriptions/" + $SrcContext.Subscription.Id 
-$roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $SrcContext.Account.Id) -and ($_.Scope -eq $scope) } 
+$roleAssignment = @()
+if($Global:ResourcesMajorVersion -ge 4) {
+  $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $SrcContext.Account.Id) -and ($_.Scope -eq $scope) } 
+}
+else {
+  $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $SrcContext.Account
+}
+
 
 if(!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner")) 
 {
@@ -309,7 +316,13 @@ if(!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignmen
 #check dest permission
 Set-AzureRmContext -Context $DestContext | Out-Null
 $scope = "/subscriptions/" + $DestContext.Subscription.Id 
-$roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $DestContext.Account.Id) -and ($_.Scope -eq $scope) } 
+if($Global:ResourcesMajorVersion -ge 4) {
+  $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $DestContext.Account.Id) -and ($_.Scope -eq $scope) } 
+}
+else {
+  $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $DestContext.Account
+}
+
 
 if(!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner")) 
 {

@@ -64,16 +64,25 @@
       }
     }
   }
-
+  $Global:StorageMajorVersion = 0
+  $Global:ComputeMajorVersion = 0
+  $Global:NetworkMajorVersion = 0
+  $Global:ProfileMajorVersion = 0
+  $Global:ResourcesMajorVersion = 0
   Function Check-AzureRmMigrationPSRequirement
   {
-    $moduleList = Get-Module -ListAvailable
+    $moduleList = Get-Module -ListAvailable -Name AzureRm.*
 
     $AzureRmStorage = $moduleList | Where-Object { $_.Name -eq "AzureRm.Storage" }
     $AzureRmCompute = $moduleList | Where-Object { $_.Name -eq "AzureRm.Compute" }
-    $AzureRMNetwork = $moduleList | Where-Object { $_.Name -eq "AzureRm.Network" }
-    $AzureRMProfile = $moduleList | Where-Object { $_.Name -eq "AzureRm.Profile" }
-
+    $AzureRmNetwork = $moduleList | Where-Object { $_.Name -eq "AzureRm.Network" }
+    $AzureRmProfile = $moduleList | Where-Object { $_.Name -eq "AzureRm.Profile" }
+    $AzureRmResources = $moduleList | Where-Object { $_.Name -eq "AzureRm.Resources" }
+    $Global:StorageMajorVersion = $AzureRmStorage.Version.Major
+    $Global:ComputeMajorVersion = $AzureRmCompute.Version.Major
+    $Global:NetworkMajorVersion = $AzureRmNetwork.Version.Major
+    $Global:ProfileMajorVersion = $AzureRmProfile.Version.Major
+    $Global:ResourcesMajorVersion = $AzureRmResources.Version.Major
     function Check-AzurePSModule
     {
       Param( [PSObject] $module )
@@ -88,8 +97,8 @@
 
     Check-AzurePSModule -module $AzureRmStorage
     Check-AzurePSModule -module $AzureRmCompute
-    Check-AzurePSModule -module $AzureRMNetwork
-    Check-AzurePSModule -module $AzureRMProfile
+    Check-AzurePSModule -module $AzureRmNetwork
+    Check-AzurePSModule -module $AzureRmProfile
   }
 
   ##PS Module Check
@@ -294,19 +303,30 @@ Function MigrationTelemetry {
 
     $dic = @{}
     $dic.Add("Completed",$completed.IsPresent)
-    #$dic.Add("SrcContext",(ConvertTo-Json $srcContext))
-    #$dic.Add("DestContext",(ConvertTo-Json $destContext))
     $dic.Add("VmProfile",(ConvertTo-Json $vmProfile))
     $dic.Add("SourceEnvironment",$srcContext.Environment.Name)
-    $dic.Add("SourceSubscriptionId",$srcContext.Subscription.Id)
-    $dic.Add("SourceTenantId",$srcContext.Tenant.Id)
     $dic.Add("DestinationEnvironment",$destContext.Environment.Name)
-    $dic.Add("DestinationSubscriptionId",$destContext.Subscription.Id)
-    $dic.Add("DestinationTenantId",$destContext.Tenant.Id)
     $dic.Add("VmSize",$vmProfile.HardwareProfile.VmSize)
     $dic.Add("VmLocation",$vmProfile.Location)
     $dic.Add("VmOsType",$vmProfile.StorageProfile.OsDisk.OsType)
     $dic.Add("VmNumberOfDataDisk",$vmProfile.StorageProfile.DataDisks.Count)
+
+    $srcAccountId = ""
+    if($Global:ProfileMajorVersion -ge 3) {
+      $dic.Add("SourceSubscriptionId",$srcContext.Subscription.Id)
+      $dic.Add("SourceTenantId",$srcContext.Tenant.Id)
+      $dic.Add("DestinationSubscriptionId",$destContext.Subscription.Id)
+      $dic.Add("DestinationTenantId",$destContext.Tenant.Id)
+      $srcAccountId = $srcContext.Account.Id
+    }
+    else {
+      $dic.Add("SourceSubscriptionId",$srcContext.Subscription.SubscriptionId)
+      $dic.Add("SourceTenantId",$srcContext.Tenant.TenantId)
+      $dic.Add("DestinationSubscriptionId",$destContext.Subscription.SubscriptionId)
+      $dic.Add("DestinationTenantId",$destContext.Tenant.TenantId)
+      $srcAccountId = $srcContext.Account
+    }
+
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $true} | %{$dic.Add("VmOsDiskSzie",$_.BlobActualBytes)}
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $false} | %{$dic.Add(("VmDataDisk"+$_.Lun+"Size"),$_.BlobActualBytes)}
     $Global:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | %{
@@ -318,7 +338,7 @@ Function MigrationTelemetry {
         Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
         $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
         $telemetry.AddOrUpdateEntity($args[1],$args[2],$args[3])
-    } -ArgumentList $path, $srcContext.Account.Id, $Global:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
+    } -ArgumentList $path, $srcAccountId, $Global:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
 
 }
   ##Get the parameter if not provided
@@ -343,13 +363,22 @@ Function MigrationTelemetry {
 
       ForEach ( $sub in $subscriptions )
       {
-        $subList += $sub.Name
+        if($Global:ProfileMajorVersion -ge 3) {
+          $subList += $sub.Name
+        }
+        else {
+          $subList += $sub.SubscriptionName
+        }
       }
 
       $subscription = SelectionBox -title "Please Select the Source Subscription" -options $subList
 
-      Select-AzureRmSubscription -Subscription $Subscription | Out-Null
-
+      if($Global:ProfileMajorVersion -ge 3) {
+        Select-AzureRmSubscription -Subscription $Subscription | Out-Null
+      }
+      else {
+        Select-AzureRmSubscription -SubscriptionName  $Subscription | Out-Null
+      }
       $SrcContext = Get-AzureRmContext
     }
 
@@ -381,12 +410,22 @@ Function MigrationTelemetry {
 
       ForEach ( $sub in $subscriptions )
       {
-        $subList += $sub.Name
+        if($Global:ProfileMajorVersion -ge 3) {
+          $subList += $sub.Name
+        }
+        else {
+          $subList += $sub.SubscriptionName
+        }
       }
 
       $subscription = SelectionBox -title "Please Select the Desitnation Subscription" -options $subList
 
-      Select-AzureRmSubscription -Subscription $Subscription | Out-Null
+      if($Global:ProfileMajorVersion -ge 3) {
+        Select-AzureRmSubscription -Subscription $Subscription | Out-Null
+      }
+      else {
+        Select-AzureRmSubscription -SubscriptionName  $Subscription | Out-Null
+      }
 
       $DestContext = Get-AzureRmContext
     }

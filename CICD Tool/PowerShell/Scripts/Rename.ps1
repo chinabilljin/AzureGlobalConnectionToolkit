@@ -102,15 +102,28 @@ if ($vm.AvailabilitySetReference -ne $null)
     Add-ResourceList -resourceId $vm.AvailabilitySetReference.Id
 }
    
-
+$nic = @()
 #NIC
-if ($vm.NetworkProfile.NetworkInterfaces -ne $null)
+if($Global:ComputeMajorVersion -ge 3) {
+  $nic = $vm.NetworkProfile.NetworkInterfaces
+}
+else {
+  $nic = $vm.NetworkInterfaceIDs
+}
+if ($nic -ne $null)
 { 
-   foreach ( $nicId in $vm.NetworkProfile.NetworkInterfaces )
+   foreach ( $nicId in $nic )
    {
-      Add-ResourceList -resourceId $nicId.Id
+     $nic_id = @()
+      if($Global:ComputeMajorVersion -ge 3) {
+        $nic_id = $nicId.Id
+      }
+      else {
+        $nic_id = $nicId
+      }
+      Add-ResourceList -resourceId $nic_id
             
-      $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId.Id }
+      $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nic_id }
      
       foreach ( $ipConfig in $nic.IpConfigurations )
       {
