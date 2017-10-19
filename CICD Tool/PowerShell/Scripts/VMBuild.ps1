@@ -216,6 +216,7 @@ else
 }
 
 ####Get ARM Template and Modify####
+Set-AzureRmContext -Context $SrcContext | Out-Null
 $SrcResourceList = New-Object PSObject
 $DestResourceList = New-Object PSObject
 
@@ -271,6 +272,7 @@ ForEach ( $rg in $destinationResourceGroups )
   $targetresources | Add-Member -Name 'Phase3' -MemberType NoteProperty -Value $container
   $targetresources | Add-Member -Name 'Phase4' -MemberType NoteProperty -Value $container
   $targetresources | Add-Member -Name 'Phase5' -MemberType NoteProperty -Value $container
+  $targetresources | Add-Member -Name 'Phase6' -MemberType NoteProperty -Value $container
 
   $DestResourceList | Add-Member -Name $rg -MemberType NoteProperty -Value $targetresources
 }
@@ -300,7 +302,8 @@ ForEach ( $resource in $vmResources )
     {
       'virtualMachines'
       {
-        $c = $SrcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match "Microsoft.Compute/virtualMachines") }
+        $c = $SrcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -eq "Microsoft.Compute/virtualMachines") }
+        $cex = $SrcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -eq "Microsoft.Compute/virtualMachines/extensions") }
 
         if ($c -eq $null)
         {
@@ -352,6 +355,22 @@ ForEach ( $resource in $vmResources )
         $crs | Add-Member -Name "dependsOn" -MemberType NoteProperty -Value $crsDeps
 
         $destResourceList.$destRg.Phase5 += $crs
+
+        if ($cex.Count -ne 0)
+        {
+          foreach ($vmex in $cex)
+          {
+            if ($vmex.location -ne $null) 
+            {
+              $vmex.location = $targetLocation
+            }
+            if ($vmex.dependsOn -ne $null)
+            {
+              $vmex.dependsOn = @()
+            }
+            $destResourceList.$destRg.Phase6 += $vmex
+          }
+        }
       }
       'publicIPAddresses'
       {
@@ -388,10 +407,44 @@ ForEach ( $resource in $vmResources )
       }    
       default
       {
-        $targetresource = $srcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match $resource.ResourceType) }
-        $targetresource.location = $targetLocation
-        $targetresource.dependsOn = @()
-        $destResourceList.$destRg.$phase += $targetresource
+        $targetresources = $srcResourceList.$srcRg.resources | Where-Object { ($_.name -match $name) -and ($_.type -match $resource.ResourceType) }
+        foreach ($targetresource in $targetresources)
+        {
+          if ($targetresource.location -ne $null) 
+          {
+            $targetresource.location = $targetLocation
+          }
+          if ($targetresource.dependsOn -ne $null)
+          {
+            $targetresource.dependsOn = @()
+          }
+
+          if ($targetresource.type -eq "Microsoft.Network/networkInterfaces")
+          {
+            $targetResource.properties = $targetResource.properties | Select-Object -Property * -ExcludeProperty virtualMachine
+          }
+
+          if ($targetresource.type -eq "Microsoft.Compute/availabilitySets")
+          {
+            if ($targetResource.properties.virtualMachines.Count -ne 0)
+            {
+              $targetResource.properties.virtualMachines = @()
+            }
+          }
+
+          if ($targetresource.type -eq "Microsoft.Network/networkSecurityGroups/securityRules")
+          {
+            $destResourceList.$destRg.Phase2 += $targetresource
+          }
+          elseif ($targetresource.type -eq "Microsoft.Network/virtualNetworks/subnets")
+          {
+            $destResourceList.$destRg.Phase3 += $targetresource
+          }
+          else
+          {
+            $destResourceList.$destRg.$phase += $targetresource
+          }
+        }
       }
     }  
   }
@@ -415,10 +468,9 @@ Class ResourceMember
 $progressPercentage = 40
 
 #VM Deploy by Phase
-For($k = 1; $k -le 5 ; $k++ )
+For($k = 1; $k -le 6 ; $k++ )
 {
   $currentPhase = "Phase" + $k
-
   Foreach ( $rg in $destinationResourceGroups ) {
     
     if ( $destResourceList.$rg.$currentPhase.Count -ne 0 ){
@@ -440,6 +492,14 @@ For($k = 1; $k -le 5 ; $k++ )
         if ( $resource.name -match "\[parameters\('")
         {
           $parameterList += $resource.Name.Split("'")[1]
+        }
+        if ( $resource.name -match "\[concat\(parameters\('")
+        {
+          $parameterList += $resource.Name.Split("'")[1]
+          if ($resource.Name.Split("'")[4] -match "parameters\(")
+          {
+            $parameterList += $resource.Name.Split("'")[5]
+          }
         }
                 
         $resourceMembers = $resource.properties | Get-Member -MemberType NoteProperty
@@ -511,11 +571,22 @@ For($k = 1; $k -le 5 ; $k++ )
                   Default
                   {
                     #collect the required template
-                    if ( $value -match "\[parameters\('" )
+                    if ( $value -match "parameters\('" )
                     {
-                      $parameterList += $value.Split("'")[1]
-                    
+                      $paraChecks = $value.Split("'")
+                      
+                      $checkCount = 0
+                      foreach ($paraCheck in $paraChecks)
+                      {
+                        if ($paraCheck -match "parameters\(")
+                        {
+                          $parameterList += $paraChecks[$checkCount+1]
+                        }
+                        $checkCount++
+                      }
+                                     
                     }
+
 
                     #update resourceId to make it independent
                     if (($r.Name -eq "id") -and ($value -match "resourceId"))
@@ -642,6 +713,7 @@ For($k = 1; $k -le 5 ; $k++ )
 
   Write-Progress -id 30 -ParentId 0 -activity "Building VM" -status "Deploying VM" -percentComplete $progressPercentage
 }
+
 MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VMBuild" -phaseStatus Succeed
 
 ####Validate the VM Deployment####
