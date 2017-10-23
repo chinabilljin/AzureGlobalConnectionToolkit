@@ -234,8 +234,8 @@ if ( $RenameInfos.Count -eq 0) {
     }
 
 
-    $Script:sourceResourceGroups = $ResourceGroups | Select-Object -Unique
-    $Script:destinationResourceGroups = $ResourceGroups | Select-Object -Unique
+    $Script:sourceResourceGroups = $ResourceGroups 
+    $Script:destinationResourceGroups = $ResourceGroups 
 }
 else { 
     Foreach ( $renameInfo in $RenameInfos) { 
