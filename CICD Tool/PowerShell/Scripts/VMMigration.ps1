@@ -69,6 +69,7 @@
   $Global:NetworkMajorVersion = 0
   $Global:ProfileMajorVersion = 0
   $Global:ResourcesMajorVersion = 0
+  $Global:AzurePowershellVersion = Get-Module -ListAvailable -Name Azure | ForEach-Object {$_.version.toString()}
   Function Check-AzureRmMigrationPSRequirement
   {
     $moduleList = Get-Module -ListAvailable -Name AzureRm.*
@@ -301,7 +302,9 @@ Function MigrationTelemetry {
     #just record the start time when phase name was not provided, so no table upgrade
     if($phaseName -eq "") {return}
 
+    
     $dic = @{}
+    $dic.Add("AzurePowershellVersion",$Global:AzurePowershellVersion)
     $dic.Add("Completed",$completed.IsPresent)
     $dic.Add("VmProfile",(ConvertTo-Json $vmProfile))
     $dic.Add("SourceEnvironment",$srcContext.Environment.Name)
