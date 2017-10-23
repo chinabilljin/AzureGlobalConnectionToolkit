@@ -249,8 +249,8 @@ if ( $RenameInfos.Count -eq 0)
         }
 
 
-  $Script:sourceResourceGroups = $sourceResourceGroups | Select-Object -Unique
-  $Script:destinationResourceGroups = $destinationResourceGroups | Select-Object -Unique
+  $Script:sourceResourceGroups = $ResourceGroups | Select-Object -Unique
+  $Script:destinationResourceGroups = $ResourceGroups | Select-Object -Unique
 }
 
 ####Get ARM Template and Modify####
