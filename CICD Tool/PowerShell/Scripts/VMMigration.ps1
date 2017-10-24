@@ -128,7 +128,13 @@
       [Switch]
       $MultipleChoice
     )
+    #[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
+    #[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") 
+
     Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Windows.Forms.MessageBox
+    Add-Type -AssemblyName System.Windows.Forms.MessageBoxButtons
+    Add-Type -AssemblyName System.Windows.Forms.MessageBoxIcon
     Add-Type -AssemblyName System.Drawing
 
     $objForm = New-Object System.Windows.Forms.Form 
@@ -628,7 +634,7 @@ Function MigrationTelemetry {
         Write-Host $message -ForegroundColor Red        
       }
 
-      $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Validation Failed.Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
+      $RenameConfirm = [System.Windows.Forms.MessageBox]::Show("Validation Failed. Do you want to change VM configuration?" , "Azure Global Connection Toolkit" , 4)
       if ($RenameConfirm -eq "Yes")
       {
         $RenameInfos = .\Rename.ps1 -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext
