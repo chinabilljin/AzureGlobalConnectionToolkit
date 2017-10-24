@@ -1,11 +1,16 @@
-﻿function Check-AzureRmMigrationPSRequirement {
-    $moduleList = Get-Module -ListAvailable
+﻿Function Check-AzureRmMigrationPSRequirement {
+    $moduleList = Get-Module -ListAvailable -Name AzureRm.*
 
     $AzureRmStorage = $moduleList | Where-Object { $_.Name -eq "AzureRm.Storage" }
     $AzureRmCompute = $moduleList | Where-Object { $_.Name -eq "AzureRm.Compute" }
-    $AzureRMNetwork = $moduleList | Where-Object { $_.Name -eq "AzureRm.Network" }
-    $AzureRMProfile = $moduleList | Where-Object { $_.Name -eq "AzureRm.Profile" }
-
+    $AzureRmNetwork = $moduleList | Where-Object { $_.Name -eq "AzureRm.Network" }
+    $AzureRmProfile = $moduleList | Where-Object { $_.Name -eq "AzureRm.Profile" }
+    $AzureRmResources = $moduleList | Where-Object { $_.Name -eq "AzureRm.Resources" }
+    $Global:StorageMajorVersion = $AzureRmStorage.Version.Major
+    $Global:ComputeMajorVersion = $AzureRmCompute.Version.Major
+    $Global:NetworkMajorVersion = $AzureRmNetwork.Version.Major
+    $Global:ProfileMajorVersion = $AzureRmProfile.Version.Major
+    $Global:ResourcesMajorVersion = $AzureRmResources.Version.Major
     function Check-AzurePSModule {
         Param( [PSObject] $module )
 
@@ -19,11 +24,9 @@
 
     Check-AzurePSModule -module $AzureRmStorage
     Check-AzurePSModule -module $AzureRmCompute
-    Check-AzurePSModule -module $AzureRMNetwork
-    Check-AzurePSModule -module $AzureRMProfile
-
+    Check-AzurePSModule -module $AzureRmNetwork
+    Check-AzurePSModule -module $AzureRmProfile
 }
-
 Function MigrationTelemetry {
     Param(
         [Parameter(Mandatory = $true)]
@@ -46,18 +49,18 @@ Function MigrationTelemetry {
         [Switch] $completed
 
     )
-    $path = [environment]::getfolderpath("mydocuments") + "\WindowsPowerShell\Modules\AzureGlobalConnectionToolkit\CICDTool"
+    $path = Get-Location | % {$_.Path}
 
     #record timespan for each phase
     $dateTime = Get-Date
     
-    $duration = If ($Script:timeSpanList.Count -eq 0) {
+    $duration = If ($timeSpanList.Count -eq 0) {
         0
     }
     else {
-        for ($i = $Script:timeSpanList.Count - 1; $i -ge 0; $i-- ) {
-            if ($Script:timeSpanList[$i].PhaseName -ne $phaseName) {
-                $lastPhaseDateTime = $Script:timeSpanList[$i].DateTime
+        for ($i = $timeSpanList.Count - 1; $i -ge 0; $i-- ) {
+            if ($timeSpanList[$i].PhaseName -ne $phaseName) {
+                $lastPhaseDateTime = $timeSpanList[$i].DateTime
                 break
             }
         }
@@ -70,29 +73,42 @@ Function MigrationTelemetry {
     $timeSpan | Add-Member -MemberType NoteProperty -Name DateTime -Value $dateTime 
     $timeSpan | Add-Member -MemberType NoteProperty -Name TimeSpan -Value $duration 
 
-    $Script:timeSpanList += $timeSpan
+    $Global:timeSpanList += $timeSpan
 
     #just record the start time when phase name was not provided, so no table upgrade
     if ($phaseName -eq "") {return}
 
+    
     $dic = @{}
+    $dic.Add("AzurePowershellVersion", $Global:AzurePowershellVersion)
     $dic.Add("Completed", $completed.IsPresent)
-    $dic.Add("SrcContext", (ConvertTo-Json $srcContext))
-    $dic.Add("DestContext", (ConvertTo-Json $destContext))
     $dic.Add("VmProfile", (ConvertTo-Json $vmProfile))
     $dic.Add("SourceEnvironment", $srcContext.Environment.Name)
-    $dic.Add("SourceSubscriptionId", $srcContext.Subscription.SubscriptionId)
-    $dic.Add("SourceTenantId", $srcContext.Tenant.TenantId)
     $dic.Add("DestinationEnvironment", $destContext.Environment.Name)
-    $dic.Add("DestinationSubscriptionId", $destContext.Subscription.SubscriptionId)
-    $dic.Add("DestinationTenantId", $destContext.Tenant.TenantId)
     $dic.Add("VmSize", $vmProfile.HardwareProfile.VmSize)
     $dic.Add("VmLocation", $vmProfile.Location)
     $dic.Add("VmOsType", $vmProfile.StorageProfile.OsDisk.OsType)
     $dic.Add("VmNumberOfDataDisk", $vmProfile.StorageProfile.DataDisks.Count)
+
+    $srcAccountId = ""
+    if ($Global:ProfileMajorVersion -ge 3) {
+        $dic.Add("SourceSubscriptionId", $srcContext.Subscription.Id)
+        $dic.Add("SourceTenantId", $srcContext.Tenant.Id)
+        $dic.Add("DestinationSubscriptionId", $destContext.Subscription.Id)
+        $dic.Add("DestinationTenantId", $destContext.Tenant.Id)
+        $srcAccountId = $srcContext.Account.Id
+    }
+    else {
+        $dic.Add("SourceSubscriptionId", $srcContext.Subscription.SubscriptionId)
+        $dic.Add("SourceTenantId", $srcContext.Tenant.TenantId)
+        $dic.Add("DestinationSubscriptionId", $destContext.Subscription.SubscriptionId)
+        $dic.Add("DestinationTenantId", $destContext.Tenant.TenantId)
+        $srcAccountId = $srcContext.Account
+    }
+
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $true} | % {$dic.Add("VmOsDiskSzie", $_.BlobActualBytes)}
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $false} | % {$dic.Add(("VmDataDisk" + $_.Lun + "Size"), $_.BlobActualBytes)}
-    $Script:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | % {
+    $Global:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | % {
         $dic.Add(($_.phaseName + "TimeSpan"), $_.TimeSpan);
         $dic.Add(($_.phaseName + "Status"), $_.PhaseStatus);
     }
@@ -101,9 +117,10 @@ Function MigrationTelemetry {
         Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
         $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
         $telemetry.AddOrUpdateEntity($args[1], $args[2], $args[3])
-    } -ArgumentList $path, $srcContext.Account, $Script:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
+    } -ArgumentList $path, $srcAccountId, $Global:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
 
 }
+
 
 function Start-AzureRmVMMigrationValidate {
     Param(
@@ -211,6 +228,7 @@ function Start-AzureRmVMMigrationValidate {
                 $targetStor = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storName }
       
                 $resource = New-Object ResourceProfile
+                $resource.SourceName = $targetStor.StorageAccountName
                 $resource.DestinationName = $targetStor.StorageAccountName
                 $resource.ResourceType = "storageAccounts"
                 $resource.DestinationResourceGroup = $targetStor.ResourceGroupName
@@ -371,7 +389,14 @@ function Start-AzureRmVMMigrationValidate {
     Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Permission" -percentComplete 10
 
     Set-AzureRmContext -Context $SrcContext | Out-Null
-    $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $SrcContext.Account
+    $scope = "/subscriptions/" + $SrcContext.Subscription.Id 
+    $roleAssignment = @()
+    if($Global:ResourcesMajorVersion -ge 4) {
+      $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $SrcContext.Account.Id) -and ($_.Scope -eq $scope) } 
+    }
+    else {
+      $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $SrcContext.Account
+    }
 
     if (!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner")) {
         Add-ResultList -result "Failed" -detail "The current user don't have source subscription permission, because the user is not owner or coAdmin."
@@ -380,10 +405,15 @@ function Start-AzureRmVMMigrationValidate {
 
     #check dest permission
     Set-AzureRmContext -Context $DestContext | Out-Null
+    $scope = "/subscriptions/" + $DestContext.Subscription.Id 
+    if($Global:ResourcesMajorVersion -ge 4) {
+    $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $DestContext.Account.Id) -and ($_.Scope -eq $scope) } 
+    }
+    else {
     $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $DestContext.Account
-
+    }
     if (!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner")) {
-        Add-ResultList -result "Failed" -detail "The current user don't have source subscription permission, because the user is not owner or coAdmin."
+        Add-ResultList -result "Failed" -detail "The current user don't have destination subscription permission, because the user is not owner or coAdmin."
     }
 
 
@@ -442,23 +472,23 @@ function Start-AzureRmVMMigrationValidate {
 
     # Storage Name Existence
     Write-Progress -id 40 -parentId 0 -activity "Validation" -status "Checking Name Availability" -percentComplete 50
-    $storageAccountNames = @()
-    foreach ( $resource in $vmResources) {
-        if ($resource.ResourceType -eq "storageAccounts") {
-            $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.DestinationName }
-            if ( $saCheck -eq $null ) {
-                $storageAccountNames += $resource.DestinationName
-            }
-        }
-    }
 
     #VM Size check for premium storage
     Set-AzureRmContext -Context $SrcContext | Out-Null
+    $storageAccountNames = @()
+    foreach ( $resource in $vmResources) {
+        if ($resource.ResourceType -eq "storageAccounts") {
+            $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.SourceName }
+            if ( $saCheck -eq $null ) {
+                $storageAccountNames += $resource.SourceName
+            }
+        }
+    }
     Foreach ($storage in $storageAccountNames) {
         $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage}
 
         if ( $storageCheck -eq $null ) {
-            Throw ("The storage account: " + $storage + " does not exit in source subscription. Please verify again")
+            Throw ("The storage account: " + $storage + " does not exist in source subscription. Please verify again")
         }
         elseif ( $storageCheck.sku.Tier -eq "Premium" ) {
             $vmSizeSupportPremium = "Standard_DS1_v2", "Standard_DS2_v2", "Standard_DS3_v2", "Standard_DS4_v2", "Standard_DS5_v2", "Standard_DS11_v2", "Standard_DS12_v2", "Standard_DS13_v2", "Standard_DS14_v2", `
@@ -472,6 +502,16 @@ function Start-AzureRmVMMigrationValidate {
     }
 
     Set-AzureRmContext -Context $DestContext | Out-Null
+    $storageAccountNames = @()
+    foreach ( $resource in $vmResources) {
+        if ($resource.ResourceType -eq "storageAccounts") {
+            $saCheck = $storageAccountNames | Where-Object { $_ -eq $resource.DestinationName }
+            if ( $saCheck -eq $null ) {
+                $storageAccountNames += $resource.DestinationName
+            }
+        }
+    }
+    
     Foreach ($storage in $storageAccountNames) {
         $storageCheck = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storage}
 
@@ -2453,8 +2493,6 @@ function Start-AzureRmVMMigration {
         }
     }
 
-    ##PS Module Check
-    Check-AzureRmMigrationPSRequirement
 
     #Define Azure Environment
     Enum AzureEnvironment {
@@ -2578,10 +2616,10 @@ function Start-AzureRmVMMigration {
         Param(
             [Parameter(Mandatory = $True)]
             [String] $title,
-
+    
             [Parameter(Mandatory = $True)]
             [String[]] $options,
-
+    
             [Switch]
             $MultipleChoice
         )
@@ -2595,6 +2633,17 @@ function Start-AzureRmVMMigration {
         return $result
     }
 
+    ##PS Module Check
+    Check-AzureRmMigrationPSRequirement
+    
+    Add-Type -AssemblyName System.Windows.Forms
+    $Global:StorageMajorVersion = 0
+    $Global:ComputeMajorVersion = 0
+    $Global:NetworkMajorVersion = 0
+    $Global:ProfileMajorVersion = 0
+    $Global:ResourcesMajorVersion = 0
+    $Global:AzurePowershellVersion = Get-Module -ListAvailable -Name Azure | ForEach-Object {$_.version.toString()}
+    
     $Script:JobId = New-Guid | % { $_.Guid }
     $Script:timeSpanList = @()
 
@@ -2616,19 +2665,29 @@ function Start-AzureRmVMMigration {
             $subList = @()
 
             ForEach ( $sub in $subscriptions ) {
-                $subList += $sub.SubscriptionName
+                if ($Global:ProfileMajorVersion -ge 3) {
+                    $subList += $sub.Name
+                }
+                else {
+                    $subList += $sub.SubscriptionName
+                }
             }
 
             $subscription = SelectionBox -title "Please Select the Source Subscription" -options $subList
 
-            Select-AzureRmSubscription -SubscriptionName $Subscription | Out-Null
+            if ($Global:ProfileMajorVersion -ge 3) {
+                Select-AzureRmSubscription -Subscription $Subscription | Out-Null
+            }
+            else {
+                Select-AzureRmSubscription -SubscriptionName  $Subscription | Out-Null
+            }
 
             $SrcContext = Get-AzureRmContext
         }
 
-        MigrationTelemetry -srcContext $srcContext
+        MigrationTelemetry -srcContext $SrcContext
 
-        if ($destContext -eq $null ) {
+        if ($DestContext -eq $null ) {
             if ([string]::IsNullOrEmpty($destEnvironment)) {
                 $destEnv = SelectionBox -title "Please Select the Destination Environment" -options ("Azure in China (operated by 21 vianet)", "Microsoft Azure in Germany", "Microsoft Azure")
                 Switch ( $destEnv ) {
@@ -2649,14 +2708,24 @@ function Start-AzureRmVMMigration {
             $subList = @()
 
             ForEach ( $sub in $subscriptions ) {
-                $subList += $sub.SubscriptionName
+                if ($Global:ProfileMajorVersion -ge 3) {
+                    $subList += $sub.Name
+                }
+                else {
+                    $subList += $sub.SubscriptionName
+                }
             }
 
             $subscription = SelectionBox -title "Please Select the Desitnation Subscription" -options $subList
 
-            Select-AzureRmSubscription -SubscriptionName $Subscription | Out-Null
+            if ($Global:ProfileMajorVersion -ge 3) {
+                Select-AzureRmSubscription -Subscription $Subscription | Out-Null
+            }
+            else {
+                Select-AzureRmSubscription -SubscriptionName  $Subscription | Out-Null
+            }
 
-            $destContext = Get-AzureRmContext
+            $DestContext = Get-AzureRmContext
         }
 
         if ( $vm -eq $null ) {
@@ -2741,7 +2810,7 @@ function Start-AzureRmVMMigration {
         ##Prepare Only
         "Prepare" {
             Try {
-                Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+                Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
             }
             Catch {
                 Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
@@ -2755,7 +2824,7 @@ function Start-AzureRmVMMigration {
         ##VHD Copy Only
         "VhdCopy" {
             Try { 
-                $diskUris, $vm = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+                $diskUris, $vm = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
             }
             Catch {
                 Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
@@ -2773,7 +2842,7 @@ function Start-AzureRmVMMigration {
             }
     
             Try {
-                Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris -RenameInfos $RenameInfos
+                Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -osDiskUri $osDiskUri -dataDiskUris $dataDiskUris -RenameInfos $RenameInfos
             }
             Catch {
                 Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
@@ -2843,7 +2912,7 @@ function Start-AzureRmVMMigration {
     
 
         Try {
-            Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+            Start-AzureRmVMMigrationPrepare -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
             MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "Preparation" -phaseStatus Succeed
         }
         Catch {
@@ -2853,7 +2922,7 @@ function Start-AzureRmVMMigration {
         }
     
         Try {
-            $diskUris, $vm = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -RenameInfos $RenameInfos
+            $diskUris, $vm = Start-AzureRmVMMigrationVhdCopy -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -RenameInfos $RenameInfos
             MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "VhdCopy" -phaseStatus Succeed
         }
         Catch {
@@ -2863,7 +2932,7 @@ function Start-AzureRmVMMigration {
         }
     
         Try {
-            Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $destContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris -RenameInfos $RenameInfos
+            Start-AzureRmVMMigrationBuild -vm $vm -targetLocation $targetLocation -SrcContext $SrcContext -DestContext $DestContext -osDiskUri $diskUris.osDiskUri -dataDiskUris $diskUris.dataDiskUris -RenameInfos $RenameInfos
         }
         Catch {
             Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red

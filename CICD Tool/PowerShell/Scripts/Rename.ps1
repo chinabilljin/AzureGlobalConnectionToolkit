@@ -96,28 +96,26 @@ switch ($AzureComputeModule.Version.Major) {
             Add-ResourceList -resourceId $vm.AvailabilitySetReference.Id
         }
    
-$nic = @()
-#NIC
-if($Global:ComputeMajorVersion -ge 3) {
-  $nic = $vm.NetworkProfile.NetworkInterfaces
-}
-else {
-  $nic = $vm.NetworkInterfaceIDs
-}
-if ($nic -ne $null)
-{ 
-   foreach ( $nicId in $nic )
-   {
-     $nic_id = @()
-      if($Global:ComputeMajorVersion -ge 3) {
-        $nic_id = $nicId.Id
-      }
-      else {
-        $nic_id = $nicId
-      }
-      Add-ResourceList -resourceId $nic_id
+        $nic = @()
+        #NIC
+        if ($Global:ComputeMajorVersion -ge 3) {
+            $nic = $vm.NetworkProfile.NetworkInterfaces
+        }
+        else {
+            $nic = $vm.NetworkInterfaceIDs
+        }
+        if ($nic -ne $null) { 
+            foreach ( $nicId in $nic ) {
+                $nic_id = @()
+                if ($Global:ComputeMajorVersion -ge 3) {
+                    $nic_id = $nicId.Id
+                }
+                else {
+                    $nic_id = $nicId
+                }
+                Add-ResourceList -resourceId $nic_id
             
-      $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nic_id }
+                $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nic_id }
      
                 foreach ( $ipConfig in $nic.IpConfigurations ) {
                     #LB

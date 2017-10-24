@@ -1,12 +1,11 @@
-  $moduleList = Get-Module -ListAvailable
+$moduleList = Get-Module -ListAvailable
 
-  $AzureRmStorage = $moduleList | Where-Object { $_.Name -eq "AzureRm.Storage" }
-  $AzureRmCompute = $moduleList | Where-Object { $_.Name -eq "AzureRm.Compute" }
-  $AzureRMNetwork = $moduleList | Where-Object { $_.Name -eq "AzureRm.Network" }
-  $AzureRMProfile = $moduleList | Where-Object { $_.Name -eq "AzureRm.Profile" }
+$AzureRmStorage = $moduleList | Where-Object { $_.Name -eq "AzureRm.Storage" }
+$AzureRmCompute = $moduleList | Where-Object { $_.Name -eq "AzureRm.Compute" }
+$AzureRMNetwork = $moduleList | Where-Object { $_.Name -eq "AzureRm.Network" }
+$AzureRMProfile = $moduleList | Where-Object { $_.Name -eq "AzureRm.Profile" }
 
-  function Check-AzurePSModule
-  {
+function Check-AzurePSModule {
     Param( [PSObject] $module )
 
     if ( $module -eq $null )
@@ -17,9 +16,9 @@
     else
     { Throw "This script requires AzureRm PowerShell version higher than 1.7.0. Please install the latest Azure Powershell before execute this script." }
     
-  }
+}
 
-  Check-AzurePSModule -module $AzureRmStorage
-  Check-AzurePSModule -module $AzureRmCompute
-  Check-AzurePSModule -module $AzureRMNetwork
-  Check-AzurePSModule -module $AzureRMProfile
+Check-AzurePSModule -module $AzureRmStorage
+Check-AzurePSModule -module $AzureRmCompute
+Check-AzurePSModule -module $AzureRMNetwork
+Check-AzurePSModule -module $AzureRMProfile
