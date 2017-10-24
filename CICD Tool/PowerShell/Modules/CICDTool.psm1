@@ -6,11 +6,11 @@
     $AzureRmNetwork = $moduleList | Where-Object { $_.Name -eq "AzureRm.Network" }
     $AzureRmProfile = $moduleList | Where-Object { $_.Name -eq "AzureRm.Profile" }
     $AzureRmResources = $moduleList | Where-Object { $_.Name -eq "AzureRm.Resources" }
-    $Global:StorageMajorVersion = $AzureRmStorage.Version.Major
-    $Global:ComputeMajorVersion = $AzureRmCompute.Version.Major
-    $Global:NetworkMajorVersion = $AzureRmNetwork.Version.Major
-    $Global:ProfileMajorVersion = $AzureRmProfile.Version.Major
-    $Global:ResourcesMajorVersion = $AzureRmResources.Version.Major
+    $Script:StorageMajorVersion = $AzureRmStorage.Version.Major
+    $Script:ComputeMajorVersion = $AzureRmCompute.Version.Major
+    $Script:NetworkMajorVersion = $AzureRmNetwork.Version.Major
+    $Script:ProfileMajorVersion = $AzureRmProfile.Version.Major
+    $Script:ResourcesMajorVersion = $AzureRmResources.Version.Major
     function Check-AzurePSModule {
         Param( [PSObject] $module )
 
@@ -73,14 +73,14 @@ Function MigrationTelemetry {
     $timeSpan | Add-Member -MemberType NoteProperty -Name DateTime -Value $dateTime 
     $timeSpan | Add-Member -MemberType NoteProperty -Name TimeSpan -Value $duration 
 
-    $Global:timeSpanList += $timeSpan
+    $Script:timeSpanList += $timeSpan
 
     #just record the start time when phase name was not provided, so no table upgrade
     if ($phaseName -eq "") {return}
 
     
     $dic = @{}
-    $dic.Add("AzurePowershellVersion", $Global:AzurePowershellVersion)
+    $dic.Add("AzurePowershellVersion", $Script:AzurePowershellVersion)
     $dic.Add("Completed", $completed.IsPresent)
     $dic.Add("VmProfile", (ConvertTo-Json $vmProfile))
     $dic.Add("SourceEnvironment", $srcContext.Environment.Name)
@@ -91,7 +91,7 @@ Function MigrationTelemetry {
     $dic.Add("VmNumberOfDataDisk", $vmProfile.StorageProfile.DataDisks.Count)
 
     $srcAccountId = ""
-    if ($Global:ProfileMajorVersion -ge 3) {
+    if ($Script:ProfileMajorVersion -ge 3) {
         $dic.Add("SourceSubscriptionId", $srcContext.Subscription.Id)
         $dic.Add("SourceTenantId", $srcContext.Tenant.Id)
         $dic.Add("DestinationSubscriptionId", $destContext.Subscription.Id)
@@ -108,7 +108,7 @@ Function MigrationTelemetry {
 
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $true} | % {$dic.Add("VmOsDiskSzie", $_.BlobActualBytes)}
     $vmProfile.StorageInfos | Where-Object {$_.IsOSDisk -eq $false} | % {$dic.Add(("VmDataDisk" + $_.Lun + "Size"), $_.BlobActualBytes)}
-    $Global:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | % {
+    $Script:timeSpanList | Where-Object {$_.phaseStatus -ne "Started"} | % {
         $dic.Add(($_.phaseName + "TimeSpan"), $_.TimeSpan);
         $dic.Add(($_.phaseName + "Status"), $_.PhaseStatus);
     }
@@ -117,7 +117,7 @@ Function MigrationTelemetry {
         Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
         $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
         $telemetry.AddOrUpdateEntity($args[1], $args[2], $args[3])
-    } -ArgumentList $path, $srcAccountId, $Global:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
+    } -ArgumentList $path, $srcAccountId, $Script:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
 
 }
 
@@ -391,7 +391,7 @@ function Start-AzureRmVMMigrationValidate {
     Set-AzureRmContext -Context $SrcContext | Out-Null
     $scope = "/subscriptions/" + $SrcContext.Subscription.Id 
     $roleAssignment = @()
-    if($Global:ResourcesMajorVersion -ge 4) {
+    if($Script:ResourcesMajorVersion -ge 4) {
       $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $SrcContext.Account.Id) -and ($_.Scope -eq $scope) } 
     }
     else {
@@ -406,7 +406,7 @@ function Start-AzureRmVMMigrationValidate {
     #check dest permission
     Set-AzureRmContext -Context $DestContext | Out-Null
     $scope = "/subscriptions/" + $DestContext.Subscription.Id 
-    if($Global:ResourcesMajorVersion -ge 4) {
+    if($Script:ResourcesMajorVersion -ge 4) {
     $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $DestContext.Account.Id) -and ($_.Scope -eq $scope) } 
     }
     else {
@@ -2635,12 +2635,12 @@ function Start-AzureRmVMMigration {
 
     
     Add-Type -AssemblyName System.Windows.Forms
-    $Global:StorageMajorVersion = 0
-    $Global:ComputeMajorVersion = 0
-    $Global:NetworkMajorVersion = 0
-    $Global:ProfileMajorVersion = 0
-    $Global:ResourcesMajorVersion = 0
-    $Global:AzurePowershellVersion = Get-Module -ListAvailable -Name Azure | ForEach-Object {$_.version.toString()}
+    $Script:StorageMajorVersion = 0
+    $Script:ComputeMajorVersion = 0
+    $Script:NetworkMajorVersion = 0
+    $Script:ProfileMajorVersion = 0
+    $Script:ResourcesMajorVersion = 0
+    $Script:AzurePowershellVersion = Get-Module -ListAvailable -Name Azure | ForEach-Object {$_.version.toString()}
     
     $Script:JobId = New-Guid | % { $_.Guid }
     $Script:timeSpanList = @()
@@ -2666,7 +2666,7 @@ function Start-AzureRmVMMigration {
             $subList = @()
 
             ForEach ( $sub in $subscriptions ) {
-                if ($Global:ProfileMajorVersion -ge 3) {
+                if ($Script:ProfileMajorVersion -ge 3) {
                     $subList += $sub.Name
                 }
                 else {
@@ -2676,7 +2676,7 @@ function Start-AzureRmVMMigration {
 
             $subscription = SelectionBox -title "Please Select the Source Subscription" -options $subList
 
-            if ($Global:ProfileMajorVersion -ge 3) {
+            if ($Script:ProfileMajorVersion -ge 3) {
                 Select-AzureRmSubscription -Subscription $Subscription | Out-Null
             }
             else {
@@ -2709,7 +2709,7 @@ function Start-AzureRmVMMigration {
             $subList = @()
 
             ForEach ( $sub in $subscriptions ) {
-                if ($Global:ProfileMajorVersion -ge 3) {
+                if ($Script:ProfileMajorVersion -ge 3) {
                     $subList += $sub.Name
                 }
                 else {
@@ -2719,7 +2719,7 @@ function Start-AzureRmVMMigration {
 
             $subscription = SelectionBox -title "Please Select the Desitnation Subscription" -options $subList
 
-            if ($Global:ProfileMajorVersion -ge 3) {
+            if ($Script:ProfileMajorVersion -ge 3) {
                 Select-AzureRmSubscription -Subscription $Subscription | Out-Null
             }
             else {
