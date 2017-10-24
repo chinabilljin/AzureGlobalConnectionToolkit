@@ -2633,8 +2633,6 @@ function Start-AzureRmVMMigration {
         return $result
     }
 
-    ##PS Module Check
-    Check-AzureRmMigrationPSRequirement
     
     Add-Type -AssemblyName System.Windows.Forms
     $Global:StorageMajorVersion = 0
@@ -2646,6 +2644,9 @@ function Start-AzureRmVMMigration {
     
     $Script:JobId = New-Guid | % { $_.Guid }
     $Script:timeSpanList = @()
+
+    ##PS Module Check
+    Check-AzureRmMigrationPSRequirement
 
     ##Get the parameter if not provided
     Try {
