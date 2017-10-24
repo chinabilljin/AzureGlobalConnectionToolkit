@@ -113,7 +113,7 @@
     AzureGermanCloud = 2
     AzureUSGovernment = 3
   }
-
+  
   ##Form for GUI input
   $showFormCode = {
   Function Show-Form
@@ -132,9 +132,6 @@
     #[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") 
 
     Add-Type -AssemblyName System.Windows.Forms
-    Add-Type -AssemblyName System.Windows.Forms.MessageBox
-    Add-Type -AssemblyName System.Windows.Forms.MessageBoxButtons
-    Add-Type -AssemblyName System.Windows.Forms.MessageBoxIcon
     Add-Type -AssemblyName System.Drawing
 
     $objForm = New-Object System.Windows.Forms.Form 
@@ -350,6 +347,9 @@ Function MigrationTelemetry {
     } -ArgumentList $path, $srcAccountId, $Global:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
 
 }
+
+  Add-Type -AssemblyName System.Windows.Forms
+
   ##Get the parameter if not provided
   Try
   {
