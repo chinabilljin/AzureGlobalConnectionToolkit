@@ -391,11 +391,11 @@ function Start-AzureRmVMMigrationValidate {
     Set-AzureRmContext -Context $SrcContext | Out-Null
     $scope = "/subscriptions/" + $SrcContext.Subscription.Id 
     $roleAssignment = @()
-    if($Script:ResourcesMajorVersion -ge 4) {
-      $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $SrcContext.Account.Id) -and ($_.Scope -eq $scope) } 
+    if ($Script:ResourcesMajorVersion -ge 4) {
+        $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $SrcContext.Account.Id) -and ($_.Scope -eq $scope) } 
     }
     else {
-      $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $SrcContext.Account
+        $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $SrcContext.Account
     }
 
     if (!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner")) {
@@ -406,11 +406,11 @@ function Start-AzureRmVMMigrationValidate {
     #check dest permission
     Set-AzureRmContext -Context $DestContext | Out-Null
     $scope = "/subscriptions/" + $DestContext.Subscription.Id 
-    if($Script:ResourcesMajorVersion -ge 4) {
-    $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $DestContext.Account.Id) -and ($_.Scope -eq $scope) } 
+    if ($Script:ResourcesMajorVersion -ge 4) {
+        $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators | Where-Object { ($_.SignInName -eq $DestContext.Account.Id) -and ($_.Scope -eq $scope) } 
     }
     else {
-    $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $DestContext.Account
+        $roleAssignment = Get-AzureRmRoleAssignment -IncludeClassicAdministrators -SignInName $DestContext.Account
     }
     if (!($roleAssignment.RoleDefinitionName -eq "CoAdministrator" -or $roleAssignment.RoleDefinitionName -eq "Owner")) {
         Add-ResultList -result "Failed" -detail "The current user don't have destination subscription permission, because the user is not owner or coAdmin."
@@ -673,72 +673,135 @@ function Start-AzureRmVMMigrationPrepare {
   
             if ( $storCheck -eq $null ) {
                 $targetStor = Get-AzureRmStorageAccount | Where-Object { $_.StorageAccountName -eq $storName }
+                Add-ResourceGroupList -rgName $targetStor.ResourceGroupName
                 $targetStor.Location = $targetLocation
 
                 $Script:storageAccounts += $targetStor
             }
         }
 
-  
-        #VM
         Add-ResourceGroupList -rgName $vm.ResourceGroupName
 
-        #AS
-        if ($vm.AvailabilitySetReference -ne $null) {
+        $AzureComputeModule = Get-Module -Name AzureRM.Compute
+
+        switch ($AzureComputeModule.Version.Major) {
+            '3' {
     
-            Add-ResourceGroupList -rgName $vm.AvailabilitySetReference.Id.Split("/")[4]
-    
-        }
+                #AS
+                if ($vm.AvailabilitySetReference -ne $null) {
+                    Add-ResourceGroupList -rgName $vm.AvailabilitySetReference.Id.Split("/")[4]
+                }
    
 
-        #NIC
-        if ($vm.NetworkInterfaceIDs -ne $null) {
-            foreach ( $nicId in $vm.NetworkInterfaceIDs ) {
-                Add-ResourceGroupList -rgName $nicId.Split("/")[4]
+                #NIC
+                if ($vm.NetworkProfile.NetworkInterfaces.Count -ne 0) { 
+                    foreach ( $nic in $vm.NetworkProfile.NetworkInterfaces ) {
+                        Add-ResourceGroupList -rgName $nic.Id.Split("/")[4]
             
-                $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId }
-
-                foreach ( $ipConfig in $nic.IpConfigurations ) {
-                    #LB
-                    foreach ( $lbp in $ipConfig.LoadBalancerBackendAddressPools) {   
-                        Add-ResourceGroupList -rgName $lbp.Id.Split("/")[4]
+                        $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nic.Id }
+     
+                        foreach ( $ipConfig in $nic.IpConfigurations ) {
+                            #LB
+                            foreach ( $lbp in $ipConfig.LoadBalancerBackendAddressPools) {   
+                                Add-ResourceGroupList -rgName $lbp.Id.Split("/")[4]
             
-                        #PIP-LB
-                        $lb = Get-AzureRmLoadBalancer -Name $lbp.Id.Split("/")[8] -ResourceGroupName $lbp.Id.Split("/")[4]
-                        foreach ( $fip in $lb.FrontendIpConfigurations ) {
-                            Add-ResourceGroupList -rgName $fip.PublicIpAddress.Id.Split("/")[4]
-                        }  
-                    }
+                                #PIP-LB
+                                $lb = Get-AzureRmLoadBalancer -Name $lbp.Id.Split("/")[8] -ResourceGroupName $lbp.Id.Split("/")[4]
+                                  
+                                foreach ( $fip in $lb.FrontendIpConfigurations ) {
+                                    Add-ResourceGroupList -rgName $fip.PublicIpAddress.Id.Split("/")[4]
+                                }  
+                            }
 
-                    #VN
-                    Add-ResourceGroupList -rgName $ipConfig.Subnet.Id.Split("/")[4]
+                            #VN
+         
+                            Add-ResourceGroupList -rgName $ipConfig.Subnet.Id.Split("/")[4]
+
+                            #NSG-VN
+                            $vn = Get-AzureRmVirtualNetwork -Name $ipConfig.Subnet.Id.Split("/")[8] -ResourceGroupName $ipConfig.Subnet.Id.Split("/")[4]
             
-
-                    #NSG-VN
-                    $vn = Get-AzureRmVirtualNetwork -Name $ipConfig.Subnet.Id.Split("/")[8] -ResourceGroupName $ipConfig.Subnet.Id.Split("/")[4]
-
-                    foreach ( $subnet in $vn.Subnets) {
-                        if ( $subnet.NetworkSecurityGroup -ne $null) {
-                            Add-ResourceGroupList -rgName $subnet.NetworkSecurityGroup.Id.Split("/")[4]
-                        }
-                    }
+                            foreach ( $subnet in $vn.Subnets) {
+                                if ( $subnet.NetworkSecurityGroup -ne $null) {
+                                    Add-ResourceGroupList -rgName $subnet.NetworkSecurityGroup.Id.Split("/")[4]                
+                                }
+                            }
          
 
-                    #PIP-nic
-                    if ($ipConfig.PublicIpAddress -ne $null) {
-                        Add-ResourceGroupList -rgName $ipConfig.PublicIpAddress.Id.Split("/")[4]
+                            #PIP-nic
+                            if ($ipConfig.PublicIpAddress -ne $null) {
+                                Add-ResourceGroupList -rgName $ipConfig.PublicIpAddress.Id.Split("/")[4]
+                            }
+                        }
+     
+                        #NSG-nic
+                        if ($nic.NetworkSecurityGroup -ne $null) {
+                            Add-ResourceGroupList -rgName $nic.NetworkSecurityGroup.Id.Split("/")[4]
+                        }
+
+                    }
+                }
+            }
+            default {
+                #AS
+                if ($vm.AvailabilitySetReference -ne $null) {
+    
+                    Add-ResourceGroupList -rgName $vm.AvailabilitySetReference.Id.Split("/")[4]
+    
+                }
+   
+
+                #NIC
+                if ($vm.NetworkInterfaceIDs -ne $null) {
+                    foreach ( $nicId in $vm.NetworkInterfaceIDs ) {
+                        Add-ResourceGroupList -rgName $nicId.Split("/")[4]
+            
+                        $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nicId }
+
+                        foreach ( $ipConfig in $nic.IpConfigurations ) {
+                            #LB
+                            foreach ( $lbp in $ipConfig.LoadBalancerBackendAddressPools) {   
+                                Add-ResourceGroupList -rgName $lbp.Id.Split("/")[4]
+            
+                                #PIP-LB
+                                $lb = Get-AzureRmLoadBalancer -Name $lbp.Id.Split("/")[8] -ResourceGroupName $lbp.Id.Split("/")[4]
+                                foreach ( $fip in $lb.FrontendIpConfigurations ) {
+                                    Add-ResourceGroupList -rgName $fip.PublicIpAddress.Id.Split("/")[4]
+                                }  
+                            }
+
+                            #VN
+                            Add-ResourceGroupList -rgName $ipConfig.Subnet.Id.Split("/")[4]
+            
+
+                            #NSG-VN
+                            $vn = Get-AzureRmVirtualNetwork -Name $ipConfig.Subnet.Id.Split("/")[8] -ResourceGroupName $ipConfig.Subnet.Id.Split("/")[4]
+
+                            foreach ( $subnet in $vn.Subnets) {
+                                if ( $subnet.NetworkSecurityGroup -ne $null) {
+                                    Add-ResourceGroupList -rgName $subnet.NetworkSecurityGroup.Id.Split("/")[4]
+                                }
+                            }
+         
+
+                            #PIP-nic
+                            if ($ipConfig.PublicIpAddress -ne $null) {
+                                Add-ResourceGroupList -rgName $ipConfig.PublicIpAddress.Id.Split("/")[4]
+                            }
+                        }
+
+      
+                        #NSG-nic
+                        if ($nic.NetworkSecurityGroup -ne $null) {
+                            Add-ResourceGroupList -rgName $nic.NetworkSecurityGroup.Id.Split("/")[4]
+                        }
+
                     }
                 }
 
-      
-                #NSG-nic
-                if ($nic.NetworkSecurityGroup -ne $null) {
-                    Add-ResourceGroupList -rgName $nic.NetworkSecurityGroup.Id.Split("/")[4]
-                }
-
+            
+            
             }
         }
-
 
         #Get the Storage Accountes related to this VM
 
