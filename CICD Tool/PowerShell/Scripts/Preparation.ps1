@@ -118,7 +118,7 @@ if ($RenameInfos.Count -eq 0) {
             #NIC
             if ($vm.NetworkProfile.NetworkInterfaces.Count -ne 0) { 
                 foreach ( $nic in $vm.NetworkProfile.NetworkInterfaces ) {
-                    Add-ResourceGroupList -rgName $nicId.Split("/")[4]
+                    Add-ResourceGroupList -rgName $nic.Id.Split("/")[4]
             
                     $nic = Get-AzureRmNetworkInterface | Where-Object { $_.Id -eq $nic.Id }
      
