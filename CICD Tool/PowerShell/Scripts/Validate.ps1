@@ -238,21 +238,32 @@ Function Get-AzureRmVmCoreFamily {
         [String] $VmSize   
     )
     switch -regex ($VmSize) { 
-        "^Basic_A[0-4]$" {"Basic A Family Cores"} 
-        "^Standard_A[0-7]$" {"Standard A0-A7 Family Cores"}
-        "^Standard_A([89]|1[01])$" {"Standard A8-A11 Family Cores"} 
-        "^Standard_D1?[1-5]_v2$" {"Standard Dv2 Family Cores "} 
-        "^Standard_D1?[1-4]$" {"Standard D Family Cores"} 
-        "^Standard_G[1-5]$" {"Standard G Family Cores"} 
-        "^Standard_DS1?[1-4]$" {"Standard DS Family Cores"} 
-        "^Standard_DS1?[1-5]_v2$" {"Standard DSv2 Family Cores"} 
-        "^Standard_GS[1-5]$" {"Standard GS Family Cores"} 
-        "^Standard_F([1248]|16)$" {"Standard F Family Cores"} 
-        "^Standard_F([1248]|16)s$" {"Standard FS Family Cores"} 
-        "^Standard_NV(6|12|24)$" {"Standard NV Family Cores"} 
-        "^Standard_NC(6|12|24)$" {"Standard NC Family Cores"} 
-        "^Standard_H(8m?|16m?r?)$" {"Standard H Family Cores"} 
+        "^Basic_A[0-4]$" {"basicAFamily"} 
+        "^Standard_A[0-7]$" {"standardA0_A7Family"}
+        "^Standard_A([89]|1[01])$" {"standardA8_A11Family"} 
+        "^Standard_D1?[1-4]$" {"standardDFamily"}
+        "^Standard_D1?[1-5]_v2$" {"standardDv2Family"} 
+        "^Standard_G[1-5]$" {"standardGFamily"} 
+        "^Standard_DS1?[1-4]$" {"standardDSFamily"} 
+        "^Standard_DS1?[1-5]_v2$" {"standardDSv2Family"} 
+        "^Standard_GS[1-5]$" {"standardGSFamily"} 
+        "^Standard_F([1248]|16)$" {"standardFFamily"} 
+        "^Standard_F([1248]|16)s$" {"standardFSFamily"} 
+        "^Standard_NV(6|12|24)$" {"standardNVFamily"} 
+        "^Standard_NC(6|12|24)$" {"standardNCFamily"} 
+        "^Standard_H(8m?|16m?r?)$" {"standardHFamily"}
+        "^Standard_A(1|[248]m?)_v2$" {"standardAv2Family"}
+        "^Standard_D1?[1-5]_v2_Promo$" {"standardDv2PromoFamily"}
+        "^Standard_DS1?[1-5]_v2_Promo$" {"standardDSv2PromoFamily"}
+        "^Standard_D(2|4|8|16|32|64)_v3$" {"standardDv3Family"}
+        "^Standard_D(2|4|8|16|32|64)s_v3$" {"standardDSv3Family"}
+        "^Standard_E(2|4|8|16|32(-8s|-16s)?|64(-16s|-32s)?)_v3$" {"standardEv3Family"}
+        "^Standard_E(2|4|8|16|32|64)s_v3$" {"standardESv3Family"}
+        "^Standard_B(1|2|4|8)m?s$" {"standardBFamily"}
+        "^Standard_F(2|4|8|16|32|64|72)s_v2$" {"standardFSv2Family"}
+        "^Standard_ND(6|12|24r?)s$" {"standardNDFamily"}
         default {"The Core Family could not be determined."}
+        
     }
 }
 
@@ -317,8 +328,8 @@ $vmCoreNumber = $vmHardwareProfile.NumberOfCores
 $vmCoreFamily = Get-AzureRmVmCoreFamily -VmSize $vm.HardwareProfile.VmSize
 
 $vmUsage = Get-AzureRmVMUsage -Location $targetLocation
-$vmTotalCoreUsage = $vmUsage | Where-Object {$_.Name.LocalizedValue -eq "Total Regional Cores"}
-$vmFamilyCoreUsage = $vmUsage | Where-Object {$_.Name.LocalizedValue -eq $vmCoreFamily}
+$vmTotalCoreUsage = $vmUsage | Where-Object {$_.Name.Value -eq "cores"}
+$vmFamilyCoreUsage = $vmUsage | Where-Object {$_.Name.Value -eq $vmCoreFamily}
 
 $vmAvailableTotalCore = $vmTotalCoreUsage.Limit - $vmTotalCoreUsage.CurrentValue
 $vmAvailableFamilyCoreUsage = $vmFamilyCoreUsage.Limit - $vmFamilyCoreUsage.CurrentValue
