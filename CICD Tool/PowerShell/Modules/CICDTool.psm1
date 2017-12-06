@@ -1371,6 +1371,17 @@ function Start-AzureRmVMMigrationBuild {
                                 }  
                             }
 
+                            foreach ( $lbp in $ipConfig.LoadBalancerInboundNatRules) {   
+                                Add-ResourceList -resourceId $lbp.Id
+            
+                                #PIP-LB
+                                $lb = Get-AzureRmLoadBalancer -Name $lbp.Id.Split("/")[8] -ResourceGroupName $lbp.Id.Split("/")[4]
+                                  
+                                foreach ( $fip in $lb.FrontendIpConfigurations ) {
+                                    Add-ResourceList -resourceId $fip.PublicIpAddress.Id
+                                }  
+                            }
+
                             #VN
          
                             Add-ResourceList -resourceId $ipConfig.Subnet.Id
@@ -1417,6 +1428,16 @@ function Start-AzureRmVMMigrationBuild {
                         foreach ( $ipConfig in $nic.IpConfigurations ) {
                             #LB
                             foreach ( $lbp in $ipConfig.LoadBalancerBackendAddressPools) {   
+                                Add-ResourceList -resourceId $lbp.Id
+            
+                                #PIP-LB
+                                $lb = Get-AzureRmLoadBalancer -Name $lbp.Id.Split("/")[8] -ResourceGroupName $lbp.Id.Split("/")[4]
+                                  
+                                foreach ( $fip in $lb.FrontendIpConfigurations ) {
+                                    Add-ResourceList -resourceId $fip.PublicIpAddress.Id
+                                }  
+                            }
+                            foreach ( $lbp in $ipConfig.LoadBalancerInboundNatRules) {   
                                 Add-ResourceList -resourceId $lbp.Id
             
                                 #PIP-LB
