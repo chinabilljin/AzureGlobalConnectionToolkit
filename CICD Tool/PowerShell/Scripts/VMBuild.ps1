@@ -424,15 +424,15 @@ ForEach ( $resource in $vmResources ) {
                 if (!([string]::IsNullOrEmpty($resource.DnsName))) {
                     if ($targetResource.properties.dnsSettings -eq $null) {
                         $dnsSettings = New-Object PSObject
-                        $dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName
+                        $dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName.ToLower()
                         $targetResource.properties | Add-Member -MemberType NoteProperty -Name dnsSettings -Value $dnsSettings
                     }
                     else {
                         if ($targetResource.properties.dnsSettings.domainNameLabel -eq $null) {
-                            $targetResource.properties.dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName
+                            $targetResource.properties.dnsSettings | Add-Member -MemberType NoteProperty -Name domainNameLabel -Value $resource.DnsName.ToLower()
                         }
                         else {
-                            $targetResource.properties.dnsSettings.domainNameLabel = $resource.DnsName
+                            $targetResource.properties.dnsSettings.domainNameLabel = $resource.DnsName.ToLower()
                         }
                     }
                 }
