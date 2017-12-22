@@ -115,7 +115,7 @@ customized or integrated into your existing DevOps process.
 
 ### MSI Installer
 
-1. Download latest [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.2.3/AzureGlobalConnectionToolkit.0.2.3.msi) .
+1. Download v0.2.2 [MSI Installer](https://github.com/Azure/AzureGlobalConnectionToolkit/releases/download/0.2.2/AzureGlobalConnectionToolkit.0.2.2.msi) .
 2. Run and Install.
 
 You can also find all the previous releases in [Azure Global Connection Toolkit Release](https://github.com/Azure/AzureGlobalConnectionToolkit/releases)
@@ -132,6 +132,25 @@ On Linux distributions, you might need to use sudo to successfully run the npm c
 
 ```bash
 sudo npm install -g azure-connectiontoolkit-cicd
+```
+
+### Import PowerShell Module Manually
+
+You can also import PowerShell module manually for each release in [Azure Global Connection Toolkit Release](https://github.com/Azure/AzureGlobalConnectionToolkit/releases) by following steps:
+
+1. Download the compressed source code and decompressed to a local folder
+2. Run powershell console as administrator mode
+3. Navigate to the decompressed local folder: 
+```powershell
+cd <path-to-local-foloder>
+```
+4. Import assessment module:
+```powershell
+Import-Module ".\Assessment Tool\Modules\AssessmentTool.psd1"
+```
+5. Import CICD module:
+```powershell
+Import-Module ".\CICD Tool\PowerShell\Modules\CICDTool.psd1"
 ```
 
 ## Get Started
