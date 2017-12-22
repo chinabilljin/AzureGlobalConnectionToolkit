@@ -142,13 +142,17 @@ You can also import PowerShell module manually for each release in [Azure Global
 2. Run powershell console as administrator mode
 3. Navigate to the decompressed local folder: 
 ```powershell
-cd <path-to-local-foloder>
+cd "<path-to-local-foloder>"
 ```
-4. Import assessment module:
+4. Copy to user-specific Modules directory
+```powershell
+robocopy /MIR .\ "$home\Documents\WindowsPowerShell\Modules\AzureGlobalConnectionToolkit"
+```
+5. Import assessment module:
 ```powershell
 Import-Module ".\Assessment Tool\Modules\AssessmentTool.psd1"
 ```
-5. Import CICD module:
+6. Import CICD module:
 ```powershell
 Import-Module ".\CICD Tool\PowerShell\Modules\CICDTool.psd1"
 ```
