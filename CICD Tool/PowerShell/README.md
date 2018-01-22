@@ -40,7 +40,7 @@ ARM VM Migration has two mode:
 
 #### Script Mode
 
-1. Download all the [scripts](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool/Scripts)
+1. Download all the [scripts](https://github.com/Azure/AzureGlobalConnectionToolkit/tree/master/CICD%20Tool/PowerShell/Scripts)
 2. Put them into same folder
 
 ## Get Started
