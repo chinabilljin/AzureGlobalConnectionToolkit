@@ -115,7 +115,7 @@ Function MigrationTelemetry {
 
     Start-Job -ScriptBlock {
         Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
-        $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
+        $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.TelemetryTool.MigrationTelemetry
         $telemetry.AddOrUpdateEntity($args[1], $args[2], $args[3])
     } -ArgumentList $path, $srcAccountId, $Script:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
 
