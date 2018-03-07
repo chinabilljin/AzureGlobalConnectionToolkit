@@ -49,7 +49,7 @@ Function MigrationTelemetry {
         [Switch] $completed
 
     )
-    $path = [environment]::getfolderpath("mydocuments") + "\WindowsPowerShell\Modules\AzureGlobalConnectionToolkit\CICDTool"
+    $path = [environment]::getfolderpath("mydocuments") + "\WindowsPowerShell\Modules\AzureGlobalConnectionToolkit\CICD Tool\PowerShell\Modules"
 
     #record timespan for each phase
     $dateTime = Get-Date
@@ -115,7 +115,7 @@ Function MigrationTelemetry {
 
     Start-Job -ScriptBlock {
         Get-ChildItem ($args[0] + "\lib") | % { Add-Type -Path $_.FullName }
-        $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.MigrationTelemetry
+        $telemetry = New-Object Microsoft.Azure.CAT.Migration.Storage.TelemetryTool.MigrationTelemetry
         $telemetry.AddOrUpdateEntity($args[1], $args[2], $args[3])
     } -ArgumentList $path, $srcAccountId, $Script:JobId, $dic | Receive-Job -Wait -AutoRemoveJob
 
@@ -298,17 +298,24 @@ function Start-AzureRmVMMigrationValidate {
             }
         }
 
+        ## Vhd == null somehow
         #OSDisk
         $osuri = $vm.StorageProfile.OsDisk.Vhd.Uri
-        if ( $osuri -match "https" ) {
-            $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)
+        
+        if($osuri){
+            if ( $osuri -match "https" ) {
+                $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)
+            }
+            else {
+                $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
+            }
+            Add-StorageList -storName $osstorname
         }
-        else {
-            $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
+        else{
+            ## Todo: Tell user osuri undefined
         }
-        Add-StorageList -storName $osstorname
 
-
+        ## Todo: datauri == null check?
         #DataDisk
         foreach ($dataDisk in $vm.StorageProfile.DataDisks) {
             $datauri = $dataDisk.Vhd.Uri
@@ -807,13 +814,18 @@ function Start-AzureRmVMMigrationPrepare {
 
         #OSDisk
         $osuri = $vm.StorageProfile.OsDisk.Vhd.Uri
-        if ( $osuri -match "https" ) {
-            $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)
+        if($osuri){
+            if ( $osuri -match "https" ) {
+                $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)
+            }
+            else {
+                $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
+            }
+            Add-StorageList -storName $osstorname
         }
-        else {
-            $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
+        else{
+            ## Todo: With no os uri, pop a tip up?
         }
-        Add-StorageList -storName $osstorname
 
 
         #DataDisk
@@ -2162,14 +2174,19 @@ Function Set-AzureRmVMMigrationRename {
 
     #OSDisk
     $osuri = $vm.StorageProfile.OsDisk.Vhd.Uri
-    if ( $osuri -match "https" ) {
-        $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)
+    if($osuri){
+        if ( $osuri -match "https" ) {
+            $osstorname = $osuri.Substring(8, $osuri.IndexOf(".blob") - 8)
+        }
+        else {
+            $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
+        }
+        Add-StorageList -storName $osstorname
     }
-    else {
-        $osstorname = $osuri.Substring(7, $osuri.IndexOf(".blob") - 7)
+    else{
+        ## Todo: tips
     }
-    Add-StorageList -storName $osstorname
-
+    
 
     #DataDisk
     foreach ($dataDisk in $vm.StorageProfile.DataDisks) {
@@ -2671,6 +2688,7 @@ function Start-AzureRmVMMigration {
             $objlistfont = New-Object System.Drawing.Font("Arial", 14, [System.Drawing.FontStyle]::Regular)
             $objListbox.Font = $objlistfont
             $objListbox.Height = 320
+            $objListbox.SetSelected(0, $true)
             $objForm.Controls.Add($objListbox) 
 
 
@@ -2744,7 +2762,9 @@ function Start-AzureRmVMMigration {
             }
 
             [Windows.Forms.MessageBox]::Show("Please Enter " + $SrcEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
-            Add-AzureRmAccount -EnvironmentName $SrcEnvironment | Out-Null
+            
+            ## Go to credential auth window. If an exception occurs, force it to catch 
+            Add-AzureRmAccount -EnvironmentName $SrcEnvironment -ErrorAction Stop | Out-Null
 
             $subscriptions = Get-AzureRmSubscription
             $subList = @()
@@ -2758,7 +2778,7 @@ function Start-AzureRmVMMigration {
                 }
             }
 
-            $subscription = SelectionBox -title "Please Select the Source Subscription" -options $subList
+            $subscription = SelectionBox -title "Please Select the Source Subscription" -options $subList -ErrorAction Stop
 
             if ($Script:ProfileMajorVersion -ge 3) {
                 Select-AzureRmSubscription -Subscription $Subscription | Out-Null
@@ -2787,7 +2807,9 @@ function Start-AzureRmVMMigration {
             }
 
             [Windows.Forms.MessageBox]::Show("Please Enter " + $destEnv + " credential after click OK", "Azure Global Connection Center", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information) | Out-Null
-            Add-AzureRmAccount -EnvironmentName $destEnvironment | Out-Null
+            
+            ## Go to credential auth window. If an exception occurs, force it to catch 
+            Add-AzureRmAccount -EnvironmentName $destEnvironment -ErrorAction Stop| Out-Null
 
             $subscriptions = Get-AzureRmSubscription
             $subList = @()
@@ -2870,11 +2892,16 @@ function Start-AzureRmVMMigration {
         }
         MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Succeed
     }
-    Catch {
-        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Message) -ForegroundColor Red
-        MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Failed -completed
+    
+    Catch{
+        Write-Host ($_.CategoryInfo.Activity + " : " + $_.Exception.Messages) -ForegroundColor Red
+        if($SrcContext){
+            MigrationTelemetry -srcContext $SrcContext -destContext $DestContext -vmProfile $vm -phaseName "UserInput" -phaseStatus Failed -completed 
+        }
         Throw "Input Parameters are not set correctly. Please try again."
+        return
     }
+
 
     Switch ($JobType) {
         ##Validation Only
